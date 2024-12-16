@@ -291,6 +291,9 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       target_msg.radius_1 = state(8);
       target_msg.radius_2 = tracker_->another_r;
       target_msg.dz = tracker_->dz;
+      //该部分存在一个隐藏变换用于匹配接口
+      
+      //
     } else if (tracker_->tracker_state == Tracker::CHANGE_TARGET) {
       target_msg.tracking = false;
     }
