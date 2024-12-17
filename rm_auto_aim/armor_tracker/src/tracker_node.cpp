@@ -25,6 +25,8 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
   tracker_ = std::make_unique<Tracker>(max_match_distance, max_match_yaw_diff_);
   tracker_->tracking_thres = this->declare_parameter("tracker.tracking_thres", 5);
   lost_time_thres_ = this->declare_parameter("tracker.lost_time_thres", 0.3);
+  // Trajectory
+  trajectory_ = std::make_unique<Trajectory>(25,0.038);
 
   // EKF
   // xa = x_armor, xc = x_robot_center
@@ -292,7 +294,7 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       target_msg.radius_2 = tracker_->another_r;
       target_msg.dz = tracker_->dz;
       //该部分存在一个隐藏变换用于匹配接口
-      
+      trajectory_->autoSolveTrajectory(target_msg);
       //
     } else if (tracker_->tracker_state == Tracker::CHANGE_TARGET) {
       target_msg.tracking = false;
