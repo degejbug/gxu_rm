@@ -37,14 +37,14 @@
       sigma2_q_xyz_min: 1.0
       sigma2_q_yaw_max: 6.0
       sigma2_q_yaw_min: 3.0
-      sigma2_q_r: 20.0
+      sigma2_q_r: 800.0
 
       r_xyz_factor: 6e-4
       r_yaw: 8e-3
 
     tracker:
       max_match_distance: 0.5
-      max_match_yaw_diff: 0.6
+      max_match_yaw_diff: 0.8
 
       tracking_thres: 5
       lost_time_thres: 1.0

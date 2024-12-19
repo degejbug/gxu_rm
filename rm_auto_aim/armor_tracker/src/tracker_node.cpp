@@ -92,7 +92,7 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
   s2qxyz_ = declare_parameter("ekf.sigma2_q_xyz", 0.05);
   s2qyaw_ = declare_parameter("ekf.sigma2_q_yaw", 5.0);
   //
-  s2qr_ = declare_parameter("ekf.sigma2_q_r", 20.0);
+  s2qr_ = declare_parameter("ekf.sigma2_q_r", 800.0);
   auto u_q = [this](const Eigen::VectorXd & x_p) {
     //
     // double vx = x_p(1), vy = x_p(3), v_yaw = x_p(7);
@@ -294,7 +294,8 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       target_msg.radius_2 = tracker_->another_r;
       target_msg.dz = tracker_->dz;
       //该部分存在一个隐藏变换用于匹配接口
-      trajectory_->autoSolveTrajectory(target_msg);
+      auto tempy = trajectory_->autoSolveTrajectory(target_msg);
+      target_msg.position.y = tempy;
       //
     } else if (tracker_->tracker_state == Tracker::CHANGE_TARGET) {
       target_msg.tracking = false;

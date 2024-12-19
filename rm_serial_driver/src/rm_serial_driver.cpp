@@ -241,6 +241,7 @@ void RMSerialDriver::sendArmorData(
     packet.armors_num = msg->armors_num;
     packet.x = msg->position.x;
     //test
+    packet.isfire = msg->is_fire;
     //
     packet.y = msg->position.y;
     packet.z = msg->position.z;
