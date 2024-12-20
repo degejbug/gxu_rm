@@ -5,33 +5,32 @@
 #ifndef TRAJECTORY_HPP_
 #define TRAJECTORY_HPP_
 
-#ifndef PI
-#define PI 3.1415926535f
-#endif
 // Eigen
-#include <Eigen/Eigen>
+// #include <Eigen/Eigen>
 
 // ROS
-#include <geometry_msgs/msg/point.hpp>
-#include <geometry_msgs/msg/quaternion.hpp>
-#include <geometry_msgs/msg/vector3.hpp>
+// #include <geometry_msgs/msg/point.hpp>
+// #include <geometry_msgs/msg/quaternion.hpp>
+// #include <geometry_msgs/msg/vector3.hpp>
 
 // STD
-#include <memory>
-#include <string>
+// #include <memory>
+// #include <string>
+#include <cmath>
 #include "armor_tracker/tracker.hpp"
-#include "auto_aim_interfaces/msg/armors.hpp"
-#include "auto_aim_interfaces/msg/target.hpp"
+// #include "auto_aim_interfaces/msg/armors.hpp"
+// #include "auto_aim_interfaces/msg/target.hpp"
 
 namespace rm_auto_aim
 {
 constexpr float GRAVITY = 9.8066f;
+constexpr float PI = 3.1415926535f;
 class Trajectory
 {
 public:
   Trajectory(float v, float k);
   void initSolver();
-  float autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_msg);
+  void autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_msg);
   
 
 private:

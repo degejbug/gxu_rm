@@ -294,8 +294,8 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       target_msg.radius_2 = tracker_->another_r;
       target_msg.dz = tracker_->dz;
       //该部分存在一个隐藏变换用于匹配接口
-      auto tempy = trajectory_->autoSolveTrajectory(target_msg);
-      target_msg.position.y = tempy;
+      trajectory_->autoSolveTrajectory(target_msg);
+      //target_msg.position.y = tempy;
       //
     } else if (tracker_->tracker_state == Tracker::CHANGE_TARGET) {
       target_msg.tracking = false;
