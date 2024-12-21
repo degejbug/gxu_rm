@@ -50,6 +50,8 @@ private:
     float yaw = 0.0;         //装甲板坐标系相对于世界坐标系的yaw角
   };
   tar_pos tar_position[4];
+  float pitchSolve(float s, float z, float v, float & final_t);
+  float newtonUpdate(float s, float v, float angle,float & final_t);
   //float (float s, float y, float v);
   
 };
