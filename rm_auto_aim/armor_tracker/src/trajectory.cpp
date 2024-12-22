@@ -11,7 +11,7 @@ Trajectory::Trajectory(float k, float v)
 : k(k),
   v(v),
   s_bias(0.03),
-  z_bias(0.21),
+  z_bias(0.02),
   bias_time(0),
   tempdz(0)
 {
@@ -66,24 +66,6 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
         use_1 = !use_1;
     }
 
-          //2种常见决策方案：
-          //1.计算枪管到目标装甲板yaw最小的那个装甲板
-          //2.计算距离最近的装甲板
-
-          //计算距离最近的装甲板
-      //	float dis_diff_min = sqrt(tar_position[0].x * tar_position[0].x + tar_position[0].y * tar_position[0].y);
-      //	int idx = 0;
-      //	for (i = 1; i<4; i++)
-      //	{
-      //		float temp_dis_diff = sqrt(tar_position[i].x * tar_position[0].x + tar_position[i].y * tar_position[0].y);
-      //		if (temp_dis_diff < dis_diff_min)
-      //		{
-      //			dis_diff_min = temp_dis_diff;
-      //			idx = i;
-      //		}
-      //	}
-      //
-
           //计算枪管到目标装甲板yaw最小的那个装甲板
     float yaw_diff_min = fabsf(current_yaw - tar_position[0].yaw);
     for (i = 1; i<4; i++) {
@@ -126,7 +108,9 @@ float Trajectory::newtonUpdate(float s, float v, float angle, float & final_t)
       return 0;
   }
   //z为给定v与angle时的高度
-  z = (float)(v * sin(angle) * t - GRAVITY * t * t / 2);
+  z = //v * sin(angle) * t / cos(angle) + 0.5 * GRAVITY * t * t / cos(angle) / cos(angle);//wu
+      (float)(v * sin(angle) * t - GRAVITY * t * t / 2);//rv          
+                
   //printf("model %f %f\n", t, z);
   final_t = t;
   return z;
@@ -152,8 +136,6 @@ float Trajectory::pitchSolve(float s, float z, float v, float & final_t)
       }
       dz = 0.6*(z - z_actual);
       z_temp = z_temp + dz;
-      // printf("iteration num %d: angle_pitch %f, temp target z:%f, err of z:%f, s:%f\n",
-      //     i + 1, angle_pitch * 180 / PI, z_temp, dz,s);
       count++;
       if (count >= 80)
       {

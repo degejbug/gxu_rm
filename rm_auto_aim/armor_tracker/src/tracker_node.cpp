@@ -229,6 +229,7 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       RCLCPP_ERROR(get_logger(), "Error while transforming %s", ex.what());
       return;
     }
+    
   }
 
   // Filter abnormal armors
@@ -266,7 +267,8 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
     info_msg.position.y = tracker_->measurement(1);
     info_msg.position.z = tracker_->measurement(2);
     info_msg.yaw = tracker_->measurement(3);
-    info_pub_->publish(info_msg);
+    //test
+    //info_pub_->publish(info_msg);
 
     if (tracker_->tracker_state == Tracker::DETECTING) {
       target_msg.tracking = false;
@@ -293,17 +295,23 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       target_msg.radius_1 = state(8);
       target_msg.radius_2 = tracker_->another_r;
       target_msg.dz = tracker_->dz;
-      //该部分存在一个隐藏变换用于匹配接口
-      trajectory_->autoSolveTrajectory(target_msg);
-      //target_msg.position.y = tempy;
+      //used for debug test
+      // info_msg.position.x = target_msg.position.x;
+      // info_msg.position.y = target_msg.position.y;
+      // info_msg.position.z = target_msg.position.z;
       //
+      //该函数存在一个隐藏变换用于匹配接口
+      trajectory_->autoSolveTrajectory(target_msg);
+      
     } else if (tracker_->tracker_state == Tracker::CHANGE_TARGET) {
       target_msg.tracking = false;
     }
   }
 
   last_time_ = time;
-
+  //test
+  info_pub_->publish(info_msg);
+  //
   target_pub_->publish(target_msg);
 
   publishMarkers(target_msg);

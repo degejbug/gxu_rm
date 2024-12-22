@@ -1,7 +1,7 @@
-camera: hik
+camera: hik 
 
 odom2camera:
-  xyz: "\"0.10 0.0  0.18\""
+  xyz: "\"0.10 0.0  0.0\""
   rpy: "\"0.0  0.0  0.0\""
 
 armor_detector_log_level: INFO
