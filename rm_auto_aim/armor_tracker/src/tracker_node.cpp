@@ -277,7 +277,7 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       tracker_->tracker_state == Tracker::TEMP_LOST) {
       target_msg.tracking = true;
       //test
-      target_msg.is_fire = true;
+      //target_msg.is_fire = true;
       //if (tracker_->tracker_state == Tracker::TEMP_LOST) target_msg.is_fire = false;
       //
       // Fill target message
@@ -302,6 +302,9 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       //
       //该函数存在一个隐藏变换用于匹配接口
       trajectory_->autoSolveTrajectory(target_msg);
+      //test
+      //target_msg.position.y = 0;
+      //
       
     } else if (tracker_->tracker_state == Tracker::CHANGE_TARGET) {
       target_msg.tracking = false;
@@ -310,6 +313,7 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
 
   last_time_ = time;
   //test
+  target_msg.is_fire = true;
   info_pub_->publish(info_msg);
   //
   target_pub_->publish(target_msg);

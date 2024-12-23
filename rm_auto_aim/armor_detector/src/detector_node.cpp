@@ -223,7 +223,9 @@ std::unique_ptr<Detector> ArmorDetectorNode::initDetector()
     this->declare_parameter("ignore_classes", std::vector<std::string>{"negative"});
   detector->classifier =
     std::make_unique<NumberClassifier>(model_path, label_path, threshold, ignore_classes);
-
+  //test corner corrector
+  detector->corner_corrector = std::make_unique<LightCornerCorrector>();
+  //
   return detector;
 }
 

@@ -18,7 +18,18 @@ const int BLUE = 1;
 
 enum class ArmorType { SMALL, LARGE, INVALID };
 const std::string ARMOR_TYPE_STR[3] = {"small", "large", "invalid"};
-
+//test
+inline std::string armorTypeToString(const ArmorType &type) {
+  switch (type) {
+    case ArmorType::SMALL:
+      return "small";
+    case ArmorType::LARGE:
+      return "large";
+    default:
+      return "invalid";
+  }
+}
+//
 struct Light : public cv::Rect
 {
   Light() = default;
@@ -33,6 +44,7 @@ struct Light : public cv::Rect
   int color;
   cv::Point2f top, bottom;
   cv::Point2f center;
+  cv::Point2f axis;//test
   double length;
   double width;
   float tilt_angle;

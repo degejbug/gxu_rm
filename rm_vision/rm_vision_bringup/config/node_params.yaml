@@ -44,7 +44,7 @@
 
     tracker:
       max_match_distance: 0.5
-      max_match_yaw_diff: 0.8
+      max_match_yaw_diff: 0.8 #origin:0.8
 
       tracking_thres: 5
       lost_time_thres: 1.0
