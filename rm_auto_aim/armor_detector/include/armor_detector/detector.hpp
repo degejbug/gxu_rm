@@ -65,7 +65,7 @@ public:
   ArmorParams a;
 
   std::unique_ptr<NumberClassifier> classifier;
-  std::unique_ptr<LightCornerCorrector> corner_corrector;//test
+  //std::unique_ptr<LightCornerCorrector> corner_corrector;//test
 
   // Debug msgs
   cv::Mat binary_img;

@@ -26,9 +26,10 @@ public:
     const std::string & model_path, const std::string & label_path, const double threshold,
     const std::vector<std::string> & ignore_classes = {});
 
-  void extractNumbers(const cv::Mat & src, std::vector<Armor> & armors);
-
-  void classify(std::vector<Armor> & armors);
+  cv::Mat extractNumber(const cv::Mat & src, Armor & armor);
+  void classify(const cv::Mat &src, Armor & armor);
+  
+  void eraseIgnoreClasses(std::vector<Armor> & armors);
 
   double threshold;
 
