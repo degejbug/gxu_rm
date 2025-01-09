@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "armor_tracker/tracker.hpp"
+#include "armor_tracker/trajectory.hpp"
 #include "auto_aim_interfaces/msg/armors.hpp"
 #include "auto_aim_interfaces/msg/target.hpp"
 #include "auto_aim_interfaces/msg/tracker_info.hpp"
@@ -55,6 +56,7 @@ private:
   double r_xyz_factor, r_yaw;
   double lost_time_thres_;
   std::unique_ptr<Tracker> tracker_;
+  std::unique_ptr<Trajectory> trajectory_;
 
   // Reset tracker service
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_tracker_srv_;

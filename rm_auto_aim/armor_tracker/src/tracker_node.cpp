@@ -25,6 +25,8 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
   tracker_ = std::make_unique<Tracker>(max_match_distance, max_match_yaw_diff_);
   tracker_->tracking_thres = this->declare_parameter("tracker.tracking_thres", 5);
   lost_time_thres_ = this->declare_parameter("tracker.lost_time_thres", 0.3);
+  // Trajectory
+  trajectory_ = std::make_unique<Trajectory>(25,0.038);
 
   // EKF
   // xa = x_armor, xc = x_robot_center
@@ -90,7 +92,7 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
   s2qxyz_ = declare_parameter("ekf.sigma2_q_xyz", 0.05);
   s2qyaw_ = declare_parameter("ekf.sigma2_q_yaw", 5.0);
   //
-  s2qr_ = declare_parameter("ekf.sigma2_q_r", 20.0);
+  s2qr_ = declare_parameter("ekf.sigma2_q_r", 800.0);
   auto u_q = [this](const Eigen::VectorXd & x_p) {
     //
     // double vx = x_p(1), vy = x_p(3), v_yaw = x_p(7);
@@ -227,6 +229,7 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       RCLCPP_ERROR(get_logger(), "Error while transforming %s", ex.what());
       return;
     }
+    
   }
 
   // Filter abnormal armors
@@ -264,7 +267,8 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
     info_msg.position.y = tracker_->measurement(1);
     info_msg.position.z = tracker_->measurement(2);
     info_msg.yaw = tracker_->measurement(3);
-    info_pub_->publish(info_msg);
+    //test
+    //info_pub_->publish(info_msg);
 
     if (tracker_->tracker_state == Tracker::DETECTING) {
       target_msg.tracking = false;
@@ -273,7 +277,7 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       tracker_->tracker_state == Tracker::TEMP_LOST) {
       target_msg.tracking = true;
       //test
-      target_msg.is_fire = true;
+      //target_msg.is_fire = true;
       //if (tracker_->tracker_state == Tracker::TEMP_LOST) target_msg.is_fire = false;
       //
       // Fill target message
@@ -291,13 +295,27 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       target_msg.radius_1 = state(8);
       target_msg.radius_2 = tracker_->another_r;
       target_msg.dz = tracker_->dz;
+      //used for debug test
+      // info_msg.position.x = target_msg.position.x;
+      // info_msg.position.y = target_msg.position.y;
+      // info_msg.position.z = target_msg.position.z;
+      //
+      //该函数存在一个隐藏变换用于匹配接口
+      trajectory_->autoSolveTrajectory(target_msg);
+      //test
+      //target_msg.position.y = 0;
+      //
+      
     } else if (tracker_->tracker_state == Tracker::CHANGE_TARGET) {
       target_msg.tracking = false;
     }
   }
 
   last_time_ = time;
-
+  //test
+  target_msg.is_fire = true;
+  info_pub_->publish(info_msg);
+  //
   target_pub_->publish(target_msg);
 
   publishMarkers(target_msg);

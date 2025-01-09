@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cmath>
 #include <vector>
+//#include <execution>
 
 #include "armor_detector/detector.hpp"
 #include "auto_aim_interfaces/msg/debug_armor.hpp"
@@ -28,13 +29,29 @@ Detector::Detector(
 
 std::vector<Armor> Detector::detect(const cv::Mat & input)
 {
+  // 1. Preprocess the image
   binary_img = preprocessImage(input);
+  // 2. Find lights
   lights_ = findLights(input, binary_img);
+  // 3. Match lights to armors
   armors_ = matchLights(lights_);
 
-  if (!armors_.empty()) {
-    classifier->extractNumbers(input, armors_);
-    classifier->classify(armors_);
+  if (!armors_.empty() && classifier != nullptr) {
+    // Parallel processing
+    std::for_each(
+      /*std::execution::par,*/ armors_.begin(), armors_.end(), [this, &input](Armor &armor) {
+        // 4. Extract the number image
+        armor.number_img = classifier->extractNumber(input, armor);
+        // 5. Do classification
+        classifier->classify(input, armor);
+        // 6. Correct the corners of the armor
+        // if (corner_corrector != nullptr) {
+        //   corner_corrector->correctCorners(armor, gray_img_);
+        // }
+      });
+
+    // 7. Erase the armors with ignore classes
+    classifier->eraseIgnoreClasses(armors_);
   }
 
   return armors_;
@@ -42,11 +59,11 @@ std::vector<Armor> Detector::detect(const cv::Mat & input)
 
 cv::Mat Detector::preprocessImage(const cv::Mat & rgb_img)
 {
-  cv::Mat gray_img;
-  cv::cvtColor(rgb_img, gray_img, cv::COLOR_RGB2GRAY);
+  //cv::Mat gray_img;
+  cv::cvtColor(rgb_img, gray_img_, cv::COLOR_RGB2GRAY);
 
   cv::Mat binary_img;
-  cv::threshold(gray_img, binary_img, binary_thres, 255, cv::THRESH_BINARY);
+  cv::threshold(gray_img_, binary_img, binary_thres, 255, cv::THRESH_BINARY);
 
   return binary_img;
 }

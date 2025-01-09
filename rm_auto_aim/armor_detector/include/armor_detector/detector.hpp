@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 
 #ifndef ARMOR_DETECTOR__DETECTOR_HPP_
-#define ARMOR_DETECTOR__DETECTOR_HPP_
+#define ARMOR_DETECTOR__DETECTOR_HPP_ 
 
 // OpenCV
 #include <opencv2/core.hpp>
@@ -65,6 +65,7 @@ public:
   ArmorParams a;
 
   std::unique_ptr<NumberClassifier> classifier;
+  //std::unique_ptr<LightCornerCorrector> corner_corrector;//test
 
   // Debug msgs
   cv::Mat binary_img;
@@ -76,7 +77,7 @@ private:
   bool containLight(
     const Light & light_1, const Light & light_2, const std::vector<Light> & lights);
   ArmorType isArmor(const Light & light_1, const Light & light_2);
-
+  cv::Mat gray_img_;//test
   std::vector<Light> lights_;
   std::vector<Armor> armors_;
 };
