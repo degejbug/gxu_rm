@@ -41,7 +41,7 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
   //test
   //pnp在远距离时出现高度解算误差，用线性函数强行拟合到正确坐标
   //tvec误差可能是标定问题
-  z_bias = 0.10;
+  z_bias = 0.17;
   //
   float estimate_t = 5/25;
   // 线性预测
