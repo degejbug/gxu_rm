@@ -85,12 +85,14 @@ RMSerialDriver::RMSerialDriver(const rclcpp::NodeOptions & options)
   //   std::bind(&RMSerialDriver::sendArmorData, this, std::placeholders::_1));
   aim_sub_.subscribe(this, "/tracker/target", rclcpp::SensorDataQoS().get_rmw_qos_profile());
   aim_time_info_sub_.subscribe(this, "/time_info/aim");
+
   rune_sub_.subscribe(this, "/tracker/rune");
   buff_time_info_sub_.subscribe(this, "/time_info/buff");
 
   aim_sync_ = std::make_unique<AimSync>(aim_syncpolicy(500), aim_sub_, aim_time_info_sub_);
   aim_sync_->registerCallback(
     std::bind(&RMSerialDriver::sendArmorData, this, std::placeholders::_1, std::placeholders::_2));
+    
   buff_sync_ = std::make_unique<BuffSync>(buff_syncpolicy(1500), rune_sub_, buff_time_info_sub_);
   buff_sync_->registerCallback(
     std::bind(&RMSerialDriver::sendBuffData, this, std::placeholders::_1, std::placeholders::_2));
