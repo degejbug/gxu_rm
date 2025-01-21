@@ -28,8 +28,7 @@
 
 #include "auto_aim_interfaces/msg/target.hpp"
 #include "auto_aim_interfaces/msg/time_info.hpp"
-#include "buff_interfaces/msg/rune.hpp"
-#include "buff_interfaces/msg/time_info.hpp"
+
 
 namespace rm_serial_driver
 {
@@ -51,9 +50,6 @@ private:
     const auto_aim_interfaces::msg::Target::ConstSharedPtr msg,
     const auto_aim_interfaces::msg::TimeInfo::ConstSharedPtr time_info);
 
-  void sendBuffData(
-    const buff_interfaces::msg::Rune::ConstSharedPtr msg,
-    const buff_interfaces::msg::TimeInfo::ConstSharedPtr time_info);
 
   void reopenPort();
 
@@ -100,14 +96,7 @@ private:
   typedef message_filters::Synchronizer<aim_syncpolicy> AimSync;
   std::shared_ptr<AimSync> aim_sync_;
 
-  message_filters::Subscriber<buff_interfaces::msg::Rune> rune_sub_;
-  message_filters::Subscriber<buff_interfaces::msg::TimeInfo> buff_time_info_sub_;
 
-  typedef message_filters::sync_policies::ApproximateTime<
-    buff_interfaces::msg::Rune, buff_interfaces::msg::TimeInfo>
-    buff_syncpolicy;
-  typedef message_filters::Synchronizer<buff_syncpolicy> BuffSync;
-  std::shared_ptr<BuffSync> buff_sync_;
 
   // For debug usage
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr latency_pub_;
@@ -120,7 +109,7 @@ private:
 
   // Time message
   rclcpp::Publisher<auto_aim_interfaces::msg::TimeInfo>::SharedPtr aim_time_info_pub_;
-  rclcpp::Publisher<buff_interfaces::msg::TimeInfo>::SharedPtr buff_time_info_pub_;
+
 
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr record_controller_pub_;
 };
