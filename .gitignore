@@ -165,6 +165,8 @@ Icon
 .AppleDesktop
 Network Trash Folder
 Temporary Items
+
+.vscode/
 .apdisk
 
 # End of https://www.gitignore.io/api/c++,linux,macos,clion
