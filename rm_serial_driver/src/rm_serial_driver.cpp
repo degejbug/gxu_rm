@@ -67,7 +67,7 @@ RMSerialDriver::RMSerialDriver(const rclcpp::NodeOptions & options)
     throw ex;
   }
 
-  aiming_point_.header.frame_id = "odom";
+  aiming_point_.header.frame_id = "gimbal_imu";
   aiming_point_.ns = "aiming_point";
   aiming_point_.type = visualization_msgs::msg::Marker::SPHERE;
   aiming_point_.action = visualization_msgs::msg::Marker::ADD;
@@ -88,11 +88,27 @@ RMSerialDriver::RMSerialDriver(const rclcpp::NodeOptions & options)
 
 
 
+  assist_camera_sub_ = this->create_subscription<std_msgs::msg::Bool>(
+    "/assistant_camera/result", 10,
+    [this](const std_msgs::msg::Bool::SharedPtr msg) {
+      if (msg->data) {
+        back_result = 1;
+        RCLCPP_INFO(this->get_logger(), "Turn Back");
+      } else {
+        back_result = 0;
+        RCLCPP_INFO(this->get_logger(), "back nothing");
+      }
+    });
+
+  nav_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
+    "/cmd_vel_nav", rclcpp::SensorDataQoS(),
+    std::bind(&RMSerialDriver::sendNavData, this, std::placeholders::_1));  
+
+
   aim_sync_ = std::make_unique<AimSync>(aim_syncpolicy(500), aim_sub_, aim_time_info_sub_);
   aim_sync_->registerCallback(
     std::bind(&RMSerialDriver::sendArmorData, this, std::placeholders::_1, std::placeholders::_2));
-
-}
+}    
 
 RMSerialDriver::~RMSerialDriver()
 {
@@ -145,6 +161,8 @@ void RMSerialDriver::receiveData()
           std_msgs::msg::String task;
           std::string theory_task;
 
+          theory_task = "aim";
+
 
           if (packet.task_mode == 0) {
             task.data = theory_task;
@@ -175,12 +193,29 @@ void RMSerialDriver::receiveData()
           geometry_msgs::msg::TransformStamped t;
           timestamp_offset_ = this->get_parameter("timestamp_offset").as_double();
           t.header.stamp = this->now() - rclcpp::Duration::from_seconds(timestamp_offset_);
-          t.header.frame_id = "odom";
+          t.header.frame_id = "gimbal_imu";
           t.child_frame_id = "gimbal_link";
+          /*
+
+          
+          */
           tf2::Quaternion q;
           q.setRPY(packet.roll, packet.pitch, packet.yaw);
           t.transform.rotation = tf2::toMsg(q);
+          
           tf_broadcaster_->sendTransform(t);
+
+          t.header.frame_id = "livox_frame";
+          t.child_frame_id = "fake_camera_link";
+          q.setRPY(packet.roll, packet.pitch, packet.relative_angle);
+          t.transform.rotation = tf2::toMsg(q);
+          // t.transform.translation.x = 0.0;
+          // t.transform.translation.y = 0.0;
+          t.transform.translation.z = -0.10;  // z 方向偏移 -0.10 米
+          tf_broadcaster_->sendTransform(t);
+          RCLCPP_INFO(
+            get_logger(), "roll: %f, pitch: %f, relative angle: %f", packet.roll,
+            packet.pitch, packet.relative_angle);
 
           // publish time
           auto_aim_interfaces::msg::TimeInfo aim_time_info;
@@ -190,13 +225,6 @@ void RMSerialDriver::receiveData()
 
           aim_time_info_pub_->publish(aim_time_info);
 
-          if (abs(packet.aim_x) > 0.01) {
-            aiming_point_.header.stamp = this->now();
-            aiming_point_.pose.position.x = packet.aim_x;
-            aiming_point_.pose.position.y = packet.aim_y;
-            aiming_point_.pose.position.z = packet.aim_z;
-            marker_pub_->publish(aiming_point_);
-          }
         } else {
           RCLCPP_ERROR(get_logger(), "CRC error!");
         }
@@ -220,14 +248,14 @@ void RMSerialDriver::sendArmorData(
     {"3", 3}, {"4", 4},       {"5", 5}, {"guard", 6}, {"base", 7}};
 
   try {
-    SendPacket packet;
+    SendPacketArmor packet;
     packet.state = msg->tracking ? 1 : 0;
     packet.id = id_unit8_map.at(msg->id);
     packet.armors_num = msg->armors_num;
     packet.x = msg->position.x;
     //test
     packet.isfire = msg->is_fire;
-    //
+    packet.back = back_result;
     packet.y = msg->position.y;
     packet.z = msg->position.z;
     packet.yaw = msg->yaw;
@@ -246,7 +274,7 @@ void RMSerialDriver::sendArmorData(
     packet.cap_timestamp = time_info->time;
     crc16::Append_CRC16_Check_Sum(reinterpret_cast<uint8_t *>(&packet), sizeof(packet));
 
-    std::vector<uint8_t> data = toVector(packet);
+    std::vector<uint8_t> data = toVectorArmor(packet);
 
     serial_driver_->port()->send(data);
 
@@ -254,6 +282,46 @@ void RMSerialDriver::sendArmorData(
     latency.data = (this->now() - msg->header.stamp).seconds() * 1000.0;
     RCLCPP_DEBUG_STREAM(get_logger(), "Total latency: " + std::to_string(latency.data) + "ms");
     latency_pub_->publish(latency);
+  } catch (const std::exception & ex) {
+    RCLCPP_ERROR(get_logger(), "Error while sending data: %s", ex.what());
+    reopenPort();
+  }
+}
+
+void RMSerialDriver::sendNavData(geometry_msgs::msg::Twist msg)
+{
+  try {
+    RCLCPP_INFO(
+      get_logger(),
+      "\n\nMsg:\nlinear.x: %f linear.y:  %f  linear.z: %f \nangular.x: %f angularv.y:  %f  "
+      "angular.z: %f\n",
+      msg.linear.x, msg.linear.y, msg.linear.z, msg.angular.x, msg.angular.y,
+      msg.angular.z);
+
+    SendPacketNav packet;
+    packet.mode = 0;
+    packet.linear_x = msg.linear.x;
+    packet.linear_y = msg.linear.y;
+    packet.linear_z = 0.0;
+    packet.angular_x = msg.angular.x;
+    packet.angular_y = msg.angular.y;
+    packet.angular_z = msg.angular.z;
+    crc16::Append_CRC16_Check_Sum(reinterpret_cast<uint8_t *>(&packet), sizeof(packet));
+    
+    std::vector<uint8_t> data = toVectorNav(packet);
+
+    serial_driver_->port()->send(data);
+    std::stringstream ss;
+    for (auto & byte : data) {
+      ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte) << " ";
+    }
+    RCLCPP_INFO(
+      get_logger(),
+      "\n\nNav:\nlinear.x: %f linear.y:  %f  linear.z: %f \nangular.x: %f angularv.y:  %f  "
+      "angular.z: %f \nNavData: %s\n",
+      packet.linear_x, packet.linear_y, packet.linear_z, packet.angular_x, packet.angular_y,
+      packet.angular_z, ss.str().c_str());
+
   } catch (const std::exception & ex) {
     RCLCPP_ERROR(get_logger(), "Error while sending data: %s", ex.what());
     reopenPort();

@@ -177,7 +177,6 @@ void ArmorDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstShared
 
     // Publishing detected armors
     armors_pub_->publish(armors_msg_);
-
     // Publishing marker
     publishMarkers();
   }

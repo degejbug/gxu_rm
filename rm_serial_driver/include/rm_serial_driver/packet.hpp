@@ -23,21 +23,20 @@ struct ReceivePacket
   float roll;
   float pitch;
   float yaw;
-  float aim_x;
-  float aim_y;
-  float aim_z;
+  float relative_angle; // relative yaw angle of radar and camera
   uint16_t game_time;  // (s) game time [0, 450]
   uint32_t timestamp;  // (ms) board time
   uint16_t checksum = 0;
 } __attribute__((packed));
 
-struct SendPacket
+struct SendPacketArmor
 {
   uint8_t header = 0xA5;
   uint8_t state;       // 0-untracking 1-tracking-aim 2-tracking-buff
   uint8_t id;          // aim: 0-outpost 6-guard 7-base
   uint8_t armors_num;  // 2-balance 3-outpost 4-normal
   uint8_t isfire;
+  uint8_t back = 0;
   float x;                 // aim: robot-center || buff: rune-center
   float y;                 // aim: robot-center || buff: rune-center
   float z;                 // aim: robot-center || buff: rune-center
@@ -55,6 +54,22 @@ struct SendPacket
   uint16_t checksum = 0;
 } __attribute__((packed));
 
+struct SendPacketNav
+{
+  uint8_t header = 0xB5;
+  char mode;
+  float linear_x;
+  float linear_y;
+  float linear_z;
+  float angular_x;
+  float angular_y;
+  float angular_z;
+  uint16_t checksum = 0;
+} __attribute__((packed));
+
+
+
+// 定义 fromVector 函数
 inline ReceivePacket fromVector(const std::vector<uint8_t> & data)
 {
   ReceivePacket packet;
@@ -62,14 +77,26 @@ inline ReceivePacket fromVector(const std::vector<uint8_t> & data)
   return packet;
 }
 
-inline std::vector<uint8_t> toVector(const SendPacket & data)
+// 定义 toVectorArmor 函数
+inline std::vector<uint8_t> toVectorArmor(const SendPacketArmor & data)
 {
-  std::vector<uint8_t> packet(sizeof(SendPacket));
+  std::vector<uint8_t> packet(sizeof(SendPacketArmor));
   std::copy(
     reinterpret_cast<const uint8_t *>(&data),
-    reinterpret_cast<const uint8_t *>(&data) + sizeof(SendPacket), packet.begin());
+    reinterpret_cast<const uint8_t *>(&data) + sizeof(SendPacketArmor), packet.begin());
   return packet;
 }
+
+// 定义 toVectorNav 函数
+inline std::vector<uint8_t> toVectorNav(const SendPacketNav & data)
+{
+  std::vector<uint8_t> packet(sizeof(SendPacketNav));
+  std::copy(
+    reinterpret_cast<const uint8_t *>(&data),
+    reinterpret_cast<const uint8_t *>(&data) + sizeof(SendPacketNav), packet.begin());
+  return packet;
+}
+
 
 }  // namespace rm_serial_driver
 

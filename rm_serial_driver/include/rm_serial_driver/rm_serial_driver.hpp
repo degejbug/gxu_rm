@@ -16,8 +16,12 @@
 #include <serial_driver/serial_driver.hpp>
 #include <std_msgs/msg/float64.hpp>
 #include <std_msgs/msg/string.hpp>
+#include <std_msgs/msg/bool.hpp>
+
 #include <std_srvs/srv/trigger.hpp>
 #include <visualization_msgs/msg/marker.hpp>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
 
 // C++ system
 #include <future>
@@ -49,6 +53,8 @@ private:
   void sendArmorData(
     const auto_aim_interfaces::msg::Target::ConstSharedPtr msg,
     const auto_aim_interfaces::msg::TimeInfo::ConstSharedPtr time_info);
+
+  void sendNavData(geometry_msgs::msg::Twist msg);
 
 
   void reopenPort();
@@ -89,12 +95,18 @@ private:
 
   message_filters::Subscriber<auto_aim_interfaces::msg::Target> aim_sub_;
   message_filters::Subscriber<auto_aim_interfaces::msg::TimeInfo> aim_time_info_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr assist_camera_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr nav_sub_;
+  
+  uint8_t back_result;
 
   typedef message_filters::sync_policies::ApproximateTime<
     auto_aim_interfaces::msg::Target, auto_aim_interfaces::msg::TimeInfo>
     aim_syncpolicy;
   typedef message_filters::Synchronizer<aim_syncpolicy> AimSync;
   std::shared_ptr<AimSync> aim_sync_;
+
+
 
 
 

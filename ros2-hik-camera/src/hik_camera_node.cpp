@@ -33,6 +33,10 @@ public:
 
     MV_CC_OpenDevice(camera_handle_);
 
+    bool bSetBoolValue=1;
+    nRet = MV_CC_SetBoolValue(camera_handle_, "ReverseX", bSetBoolValue);
+    nRet = MV_CC_SetBoolValue(camera_handle_, "ReverseY", bSetBoolValue);
+
     // Get camera infomation
     MV_CC_GetImageInfo(camera_handle_, &img_info_);
     image_msg_.data.reserve(img_info_.nHeightMax * img_info_.nWidthMax * 3);

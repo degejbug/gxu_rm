@@ -3,15 +3,15 @@
 <robot name="rm_gimbal"
   xmlns:xacro="http://ros.org/wiki/xacro">
 
-  <xacro:arg name="xyz" default="0.10 0 0.03" /> 
+  <xacro:arg name="xyz" default="0.10 0 -0.01" /> 
   <xacro:arg name="rpy" default="0 0 0" />
 
-  <link name="odom" />
+  <link name="gimbal_imu" />
 
   <link name="gimbal_link" />
 
   <joint name="gimbal_joint" type="floating">
-    <parent link="odom" />
+    <parent link="gimbal_imu" />
     <child link="gimbal_link" />
   </joint>
 

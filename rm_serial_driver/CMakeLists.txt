@@ -18,6 +18,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
+find_package(nav_msgs REQUIRED)
 
 ###########
 ## Build ##
@@ -26,6 +27,10 @@ ament_auto_find_build_dependencies()
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/rm_serial_driver.cpp
   src/crc.cpp
+)
+
+ament_target_dependencies(${PROJECT_NAME}
+  nav_msgs
 )
 
 rclcpp_components_register_node(${PROJECT_NAME}
