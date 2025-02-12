@@ -81,9 +81,9 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
     }
 
     //尽量打击接近yaw=0的装甲板
-    double yaw_diff_min = fabsf(tar_position[0].yaw - car_center_yaw);
+    double yaw_diff_min = fabsf((std::atan2(tar_position[0].y, tar_position[0].x)) - car_center_yaw);
     for (int i = 0; i<4; i++) {
-        double temp_yaw_diff = fabsf(tar_position[i].yaw - car_center_yaw);
+        double temp_yaw_diff = fabsf((std::atan2(tar_position[i].y, tar_position[i].x)) - car_center_yaw);
         if (temp_yaw_diff < yaw_diff_min)
         {
             yaw_diff_min = temp_yaw_diff;
@@ -91,30 +91,20 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
         }
     }
   }
-  auto aim_z = tar_position[idx].z + target_msg.velocity.z * timeDelay;//test
+  auto aim_z = tar_position[idx].z + target_msg.velocity.z * timeDelay;
   auto aim_x = tar_position[idx].x + target_msg.velocity.x * timeDelay;
   auto aim_y = tar_position[idx].y + target_msg.velocity.y * timeDelay;
   double distance = std::sqrt((aim_x) * (aim_x) + (aim_y) * (aim_y)) - s_bias;
+  //z_bias change
+  z_bias = 0.25 ; //
+  //
   double pitch = 0.0;
   double yaw = 0.0;
   double temp_pitch = pitchSolve(distance, aim_z + z_bias, v);
   double temp_yaw = (double)(std::atan2(aim_y, aim_x));
   
-  //纠正2025赛季全向轮由于c板倒置出现的问题
-  if(temp_pitch > 0){
-    temp_pitch = PI - temp_pitch;
-  }else{
-    temp_pitch = -(PI + temp_pitch); 
-  }
-  if(temp_yaw > 0){
-    temp_yaw = temp_yaw - PI;
-  }else{
-    temp_yaw = PI + temp_yaw;
-  } 
-  //
-
   if(temp_pitch)
-    pitch = temp_pitch;
+    pitch = -temp_pitch;
   if(aim_x || aim_y)
     yaw = temp_yaw;
   target_msg.position.x = yaw;
