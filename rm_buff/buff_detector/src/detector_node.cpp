@@ -46,7 +46,7 @@ BuffDetectorNode::BuffDetectorNode(const rclcpp::NodeOptions & options)
     });
 
   img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-    "/image_raw", rclcpp::SensorDataQoS(),
+    "/image_raw"/*"test/test_video/image_raw"*/, rclcpp::SensorDataQoS(),
     std::bind(&BuffDetectorNode::imageCallback, this, std::placeholders::_1));
 
   RCLCPP_INFO(this->get_logger(), "Detector node initialized");

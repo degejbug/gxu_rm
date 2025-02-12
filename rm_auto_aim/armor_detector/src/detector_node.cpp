@@ -91,10 +91,11 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
       pnp_solver_ = std::make_unique<PnPSolver>(camera_info->k, camera_info->d);
       cam_info_sub_.reset();
     });
-
+  //test
   img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
     "/image_raw", rclcpp::SensorDataQoS(),
     std::bind(&ArmorDetectorNode::imageCallback, this, std::placeholders::_1));
+  //
 }
 
 void ArmorDetectorNode::taskCallback(const std_msgs::msg::String::SharedPtr task_msg)

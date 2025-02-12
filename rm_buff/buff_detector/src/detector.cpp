@@ -91,13 +91,13 @@ std::vector<Blade> Detector::Detect(cv::Mat & src_img)
 
   non_max_suppression(output, conf_threshold, nms_threshold, CLS_NUM, src_img.size());
 
-  for (size_t i = 0; i < blade_array_.size(); i++) {
-    if (!calibrate_kpts(blade_array_[i], src_img)) {
-      blade_array_.erase(blade_array_.begin() + i);
-      i--;
-      RCLCPP_WARN(rclcpp::get_logger("rclcpp"), "Invalid keypoints");
-    }
-  }
+  // for (size_t i = 0; i < blade_array_.size(); i++) {
+  //   if (!calibrate_kpts(blade_array_[i], src_img)) { //test
+  //     blade_array_.erase(blade_array_.begin() + i);
+  //     i--;
+  //     RCLCPP_WARN(rclcpp::get_logger("rclcpp"), "Invalid keypoints");
+  //   }
+  // }
 
   return blade_array_;
 }

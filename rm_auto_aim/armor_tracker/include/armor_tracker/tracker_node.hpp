@@ -73,6 +73,7 @@ private:
 
   // Tracker info publisher
   rclcpp::Publisher<auto_aim_interfaces::msg::TrackerInfo>::SharedPtr info_pub_;
+  rclcpp::Publisher<auto_aim_interfaces::msg::TrackerInfo>::SharedPtr gxu_info_pub_;
 
   // Publisher
   rclcpp::Publisher<auto_aim_interfaces::msg::Target>::SharedPtr target_pub_;

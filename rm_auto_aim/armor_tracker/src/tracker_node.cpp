@@ -26,7 +26,7 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
   tracker_->tracking_thres = this->declare_parameter("tracker.tracking_thres", 5);
   lost_time_thres_ = this->declare_parameter("tracker.lost_time_thres", 0.3);
   // Trajectory
-  trajectory_ = std::make_unique<Trajectory>(25,0.038);
+  trajectory_ = std::make_unique<Trajectory>(0.038,25.0);
 
   // EKF
   // xa = x_armor, xc = x_robot_center
@@ -181,6 +181,7 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
 
   // Measurement publisher (for debug usage)
   info_pub_ = this->create_publisher<auto_aim_interfaces::msg::TrackerInfo>("/tracker/info", 10);
+  gxu_info_pub_ = this->create_publisher<auto_aim_interfaces::msg::TrackerInfo>("/tracker/gxu_info", 10);
 
   // Publisher
   target_pub_ = this->create_publisher<auto_aim_interfaces::msg::Target>(
@@ -214,6 +215,7 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
   armor_marker_.color.a = 1.0;
   armor_marker_.color.r = 1.0;
   marker_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/tracker/marker", 10);
+
 }
 
 void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::SharedPtr armors_msg)
@@ -245,6 +247,8 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
 
   // Init message
   auto_aim_interfaces::msg::TrackerInfo info_msg;
+  //test
+  auto_aim_interfaces::msg::TrackerInfo gxu_info_msg;
   auto_aim_interfaces::msg::Target target_msg;
   rclcpp::Time time = armors_msg->header.stamp;
   target_msg.header.stamp = time;
@@ -268,7 +272,9 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
     info_msg.position.z = tracker_->measurement(2);
     info_msg.yaw = tracker_->measurement(3);
     //test
-    //info_pub_->publish(info_msg);
+    gxu_info_msg.position = info_msg.position; 
+    //
+    info_pub_->publish(info_msg);
 
     if (tracker_->tracker_state == Tracker::DETECTING) {
       target_msg.tracking = false;
@@ -295,18 +301,12 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       target_msg.radius_1 = state(8);
       target_msg.radius_2 = tracker_->another_r;
       target_msg.dz = tracker_->dz;
-      //used for debug test
-      // info_msg.position.x = target_msg.position.x;
-      // info_msg.position.y = target_msg.position.y;
-      // info_msg.position.z = target_msg.position.z;
-      //
+     
       //该函数存在一个隐藏变换用于匹配接口
-      trajectory_->autoSolveTrajectory(target_msg);
-      //test
-      // target_msg.position.x = 1;
-      // target_msg.position.y = 0.2;
-      // target_msg.position.z = 0;
+      trajectory_->autoSolveTrajectory(target_msg, gxu_info_msg);
       //
+      
+     
     } else if (tracker_->tracker_state == Tracker::CHANGE_TARGET) {
       target_msg.tracking = false;
     }
@@ -314,7 +314,9 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
 
   last_time_ = time;
   //test
-  info_pub_->publish(info_msg);
+  //info_pub_->publish(info_msg);
+  //target_msg.position.y = 0;
+  gxu_info_pub_->publish(gxu_info_msg);
   //
   target_pub_->publish(target_msg);
 
@@ -327,7 +329,6 @@ void ArmorTrackerNode::publishMarkers(const auto_aim_interfaces::msg::Target & t
   linear_v_marker_.header = target_msg.header;
   angular_v_marker_.header = target_msg.header;
   armor_marker_.header = target_msg.header;
-
   visualization_msgs::msg::MarkerArray marker_array;
   if (target_msg.tracking) {
     double yaw = target_msg.yaw, r1 = target_msg.radius_1, r2 = target_msg.radius_2;

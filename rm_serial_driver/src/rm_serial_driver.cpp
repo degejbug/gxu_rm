@@ -174,6 +174,7 @@ void RMSerialDriver::receiveData()
           }
           //test
           task.data = "aim";
+          //task.data = "large_buff";
           //
           task_pub_->publish(task);
 
