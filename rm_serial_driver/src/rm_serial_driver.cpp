@@ -172,6 +172,7 @@ void RMSerialDriver::receiveData()
           record_controller.data = packet.is_play ? "start" : "stop";
           record_controller_pub_->publish(record_controller);
 
+          //rv origin
           geometry_msgs::msg::TransformStamped t;
           timestamp_offset_ = this->get_parameter("timestamp_offset").as_double();
           t.header.stamp = this->now() - rclcpp::Duration::from_seconds(timestamp_offset_);

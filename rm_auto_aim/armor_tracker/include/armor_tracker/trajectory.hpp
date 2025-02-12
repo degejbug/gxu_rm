@@ -6,7 +6,7 @@
 #define TRAJECTORY_HPP_
 
 // Eigen
-// #include <Eigen/Eigen>
+#include <Eigen/Eigen>
 
 // ROS
 // #include <geometry_msgs/msg/point.hpp>
@@ -18,41 +18,41 @@
 // #include <string>
 #include <cmath>
 #include "armor_tracker/tracker.hpp"
-// #include "auto_aim_interfaces/msg/armors.hpp"
-// #include "auto_aim_interfaces/msg/target.hpp"
+#include "auto_aim_interfaces/msg/tracker_info.hpp"
+#include "auto_aim_interfaces/msg/armors.hpp"
+#include "auto_aim_interfaces/msg/target.hpp"
 
 namespace rm_auto_aim
 {
-constexpr float GRAVITY = 9.8066f;
-constexpr float PI = 3.1415926535f;
+constexpr double GRAVITY = 9.8066f;
+constexpr double PI = 3.1415926535f;
 class Trajectory
 {
 public:
-  Trajectory(float v, float k);
+  Trajectory(double v, double k);
   void initSolver();
-  void autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_msg);
+  void autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_msg
+  , auto_aim_interfaces::msg::TrackerInfo & info_msg);
   
 
 private:
-  float k ;//弹道系数
-  float v ;//子弹速度
-  float s_bias;         //枪口前推的距离
-  float z_bias;         //yaw轴电机到枪口水平面的垂直距离
-  int bias_time;        //偏置时间
-  float tempdz;
-  //float newtonUpdate(float s, float v, float angle);
-  //float pitchSolve(float s, float y, float v);
+  double k ;//弹道系数
+  double v ;//子弹速度
+  double s_bias;         //枪口前推的距离
+  double z_bias;         //yaw轴电机到枪口水平面的垂直距离
+  double bias_time;        //偏置时间
+  double tempdz;
   struct tar_pos
   {
-    float x = 0.0;           //装甲板在世界坐标系下的x
-    float y = 0.0;           //装甲板在世界坐标系下的y
-    float z = 0.0;           //装甲板在世界坐标系下的z
-    float yaw = 0.0;         //装甲板坐标系相对于世界坐标系的yaw角
+    double x = 0.0;           //装甲板在世界坐标系下的x
+    double y = 0.0;           //装甲板在世界坐标系下的y
+    double z = 0.0;           //装甲板在世界坐标系下的z
+    double yaw = 0.0;         //装甲板坐标系相对于世界坐标系的yaw角
   };
   tar_pos tar_position[4];
-  float pitchSolve(float s, float z, float v, float & final_t);
-  float newtonUpdate(float s, float v, float angle,float & final_t);
-  //float (float s, float y, float v);
+  double pitchSolve(double s, double z, double v);
+  double newtonUpdate(double s, double v, double angle);
+  //double (double s, double y, double v);
   
 };
 
