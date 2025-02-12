@@ -43,8 +43,7 @@ RMSerialDriver::RMSerialDriver(const rclcpp::NodeOptions & options)
   marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/aiming_point", 10);
   aim_time_info_pub_ =
     this->create_publisher<auto_aim_interfaces::msg::TimeInfo>("/time_info/aim", 10);
-  buff_time_info_pub_ =
-    this->create_publisher<buff_interfaces::msg::TimeInfo>("/time_info/buff", 10);
+
   record_controller_pub_ = this->create_publisher<std_msgs::msg::String>("/record_controller", 10);
 
   // Detect parameter client
@@ -85,15 +84,14 @@ RMSerialDriver::RMSerialDriver(const rclcpp::NodeOptions & options)
   //   std::bind(&RMSerialDriver::sendArmorData, this, std::placeholders::_1));
   aim_sub_.subscribe(this, "/tracker/target", rclcpp::SensorDataQoS().get_rmw_qos_profile());
   aim_time_info_sub_.subscribe(this, "/time_info/aim");
-  rune_sub_.subscribe(this, "/tracker/rune");
-  buff_time_info_sub_.subscribe(this, "/time_info/buff");
+
+
+
 
   aim_sync_ = std::make_unique<AimSync>(aim_syncpolicy(500), aim_sub_, aim_time_info_sub_);
   aim_sync_->registerCallback(
     std::bind(&RMSerialDriver::sendArmorData, this, std::placeholders::_1, std::placeholders::_2));
-  buff_sync_ = std::make_unique<BuffSync>(buff_syncpolicy(1500), rune_sub_, buff_time_info_sub_);
-  buff_sync_->registerCallback(
-    std::bind(&RMSerialDriver::sendBuffData, this, std::placeholders::_1, std::placeholders::_2));
+
 }
 
 RMSerialDriver::~RMSerialDriver()
@@ -146,18 +144,7 @@ void RMSerialDriver::receiveData()
 
           std_msgs::msg::String task;
           std::string theory_task;
-          if (
-            (packet.game_time >= 329 && packet.game_time <= 359) ||
-            (packet.game_time >= 239 && packet.game_time <= 269)) {
-            theory_task = "small_buff";
-          } else if (
-            (packet.game_time >= 149 && packet.game_time <= 179) ||
-            (packet.game_time >= 74 && packet.game_time <= 104) ||
-            (packet.game_time > 0 && packet.game_time <= 29)) {
-            theory_task = "large_buff";
-          } else {
-            theory_task = "aim";
-          }
+
 
           if (packet.task_mode == 0) {
             task.data = theory_task;
@@ -174,7 +161,6 @@ void RMSerialDriver::receiveData()
           }
           //test
           task.data = "aim";
-          //task.data = "large_buff";
           //
           task_pub_->publish(task);
 
@@ -186,25 +172,32 @@ void RMSerialDriver::receiveData()
           record_controller.data = packet.is_play ? "start" : "stop";
           record_controller_pub_->publish(record_controller);
 
+          //rv origin
           geometry_msgs::msg::TransformStamped t;
           timestamp_offset_ = this->get_parameter("timestamp_offset").as_double();
           t.header.stamp = this->now() - rclcpp::Duration::from_seconds(timestamp_offset_);
           t.header.frame_id = "odom";
-          t.child_frame_id = "gimbal_link";
+          t.child_frame_id = "yaw_link";
           tf2::Quaternion q;
-          q.setRPY(packet.roll, packet.pitch, packet.yaw);
+          q.setRPY(0, 0, packet.yaw);
           t.transform.rotation = tf2::toMsg(q);
+          tf_broadcaster_->sendTransform(t);
+
+          t.header.frame_id = "yaw_link";
+          t.child_frame_id = "pitch_link";
+          q.setRPY(0, packet.pitch, 0);
+          t.transform.rotation = tf2::toMsg(q);
+          t.transform.translation.x = 0;
+          t.transform.translation.z = 0.20;
           tf_broadcaster_->sendTransform(t);
 
           // publish time
           auto_aim_interfaces::msg::TimeInfo aim_time_info;
-          buff_interfaces::msg::TimeInfo buff_time_info;
+
           aim_time_info.header = t.header;
           aim_time_info.time = packet.timestamp;
-          buff_time_info.header = t.header;
-          buff_time_info.time = packet.timestamp;
+
           aim_time_info_pub_->publish(aim_time_info);
-          buff_time_info_pub_->publish(buff_time_info);
 
           if (abs(packet.aim_x) > 0.01) {
             aiming_point_.header.stamp = this->now();
@@ -276,54 +269,7 @@ void RMSerialDriver::sendArmorData(
   }
 }
 
-void RMSerialDriver::sendBuffData(
-  const buff_interfaces::msg::Rune::ConstSharedPtr rune,
-  const buff_interfaces::msg::TimeInfo::ConstSharedPtr time_info)
-{
-  try {
-    SendPacket packet;
-    packet.state = rune->tracking ? 2 : 0;
-    packet.id = rune->offset_id;
-    packet.armors_num = rune->offset_id;
-    packet.x = rune->position.x;
-    //手动补偿
-    packet.x -= 0.055;
-    //
-    packet.y = rune->position.y;
-    packet.z = rune->position.z;
-    packet.yaw = rune->theta;
-    packet.vx = rune->a;
-    packet.vy = rune->b;
-    packet.vz = rune->w;
-    packet.v_yaw = 0.0;
-    packet.r1 = 0.0;
-    packet.r2 = 0.0;
-    packet.dz = 0.0;
-    packet.cap_timestamp = time_info->time;
-    if (rune->w == 0) {
-      packet.t_offset = 0;
-    } else {
-      int T = abs(2 * 3.1415926 / rune->w * 1000);
-      int offset = (rune->t_offset - time_info->time % T) % T;
-      if (offset < 0) {
-        packet.t_offset = T + offset;
-      }
-    }
-    crc16::Append_CRC16_Check_Sum(reinterpret_cast<uint8_t *>(&packet), sizeof(packet));
 
-    std::vector<uint8_t> data = toVector(packet);
-
-    serial_driver_->port()->send(data);
-
-    std_msgs::msg::Float64 latency;
-    latency.data = (this->now() - rune->header.stamp).seconds() * 1000.0;
-    RCLCPP_DEBUG_STREAM(get_logger(), "Total latency: " + std::to_string(latency.data) + "ms");
-    latency_pub_->publish(latency);
-  } catch (const std::exception & ex) {
-    RCLCPP_ERROR(get_logger(), "Error while sending data: %s", ex.what());
-    reopenPort();
-  }
-}
 
 void RMSerialDriver::getParams()
 {
