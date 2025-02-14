@@ -27,7 +27,8 @@ void Trajectory::initSolver()
 }
 
 void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_msg
-, auto_aim_interfaces::msg::TrackerInfo & info_msg)
+, auto_aim_interfaces::msg::TrackerInfo & info_msg
+, double fire_yaw)
 {
   //计算四块装甲板的位置
   //装甲板id顺序，以四块装甲板为例，逆时针编号
@@ -40,11 +41,9 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
   std::sqrt(target_msg.position.x *target_msg.position.x + target_msg.position.y *target_msg.position.y) : 1e-4;
   
   double estimate_t = estimate_distance / v;
-  target_msg.radius_1 = 0.2;
-  target_msg.radius_1 = 0.2;
+  // target_msg.radius_1 = 0.3;
+  // target_msg.radius_2 = 0.3;
   //info_msg.position_diff = estimate_distance;
-  info_msg.yaw_diff = estimate_t;
-  info_msg.yaw = k;
   //test
   //pnp在远距离时出现高度解算误差，用线性函数强行拟合到正确坐标
   //tvec误差可能是标定问题
@@ -65,8 +64,8 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
           double tmp_yaw = aim_yaw + i * 2.0 * PI/3.0;  // 2/3PI
           double r =  (target_msg.radius_1 + target_msg.radius_2)/2;   //理论上r1=r2 这里取个平均值
           //
-          tar_position[i].x = target_msg.position.x + r*std::cos(tmp_yaw);
-          tar_position[i].y = target_msg.position.y + r*std::sin(tmp_yaw);
+          tar_position[i].x = target_msg.position.x - r*std::cos(tmp_yaw);
+          tar_position[i].y = target_msg.position.y - r*std::sin(tmp_yaw);
           //
           tar_position[i].z = target_msg.position.z;
           tar_position[i].yaw = tmp_yaw;
@@ -102,25 +101,25 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
   if(idx == 0){
     target_msg.is_fire = true;
   }
-  if(std::fabs(target_msg.v_yaw < 0.1)){
-    //idx = 0;
-    target_msg.is_fire = true;
-  }
+  // if(std::fabs(target_msg.v_yaw < 0.1)){
+  //   //idx = 0;
+  //   target_msg.is_fire = true;
+  // }
   //
   auto aim_z = tar_position[idx].z + target_msg.velocity.z * timeDelay;//test
   auto aim_x = tar_position[idx].x + target_msg.velocity.x * timeDelay;
   auto aim_y = tar_position[idx].y + target_msg.velocity.y * timeDelay;
   double distance = std::sqrt((aim_x) * (aim_x) + (aim_y) * (aim_y)) - s_bias;
   //手动函数补偿高度
-  //info_msg.position_diff = distance;
-  info_msg.position_diff = tar_position[idx].yaw;
-  z_bias = distance * 0.028;
+  info_msg.yaw = std::atan2(tar_position[idx].y, tar_position[idx].x) - car_center_yaw;
+  info_msg.yaw_diff = idx;
+  z_bias = distance * 0.028 + 0.08;
   //
   double pitch = 0.0;
   double yaw = 0.0;
   double temp_pitch = pitchSolve(distance, aim_z + z_bias, v);
   double temp_yaw = (double)(std::atan2(aim_y, aim_x));
-  
+  //temp_yaw = (double)(std::atan2(target_msg.position.y, target_msg.position.x));
   //纠正2025赛季全向轮步由于c板倒置出现的问题
   //纠正2025赛季全向轮步摄像头位置误差问题
   temp_yaw = -temp_yaw-0.005;
@@ -182,4 +181,20 @@ double Trajectory::pitchSolve(double s, double z, double v)
 
   return angle_pitch;
 }
+
+double Trajectory::getYaw(double fire_yaw, double tar_yaw)
+{ 
+  if(fire_yaw < 0){
+    fire_yaw = 2*M_PI + fire_yaw;
+  }
+  if(tar_yaw < 0){
+    tar_yaw = 2*M_PI + tar_yaw;
+  }
+  double return_yaw = std::fabs(fire_yaw + M_PI -tar_yaw);
+  if(return_yaw > 2*M_PI){
+    return_yaw -= 2*M_PI;
+  }
+  return return_yaw;
+}
+
 }//namespace rm_auto_aim

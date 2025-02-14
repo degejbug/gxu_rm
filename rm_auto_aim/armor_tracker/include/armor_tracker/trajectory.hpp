@@ -32,7 +32,8 @@ public:
   Trajectory(double v, double k);
   void initSolver();
   void autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_msg
-  , auto_aim_interfaces::msg::TrackerInfo & info_msg);
+  , auto_aim_interfaces::msg::TrackerInfo & info_msg
+  , double fire_yaw);
   
 
 private:
@@ -52,7 +53,7 @@ private:
   tar_pos tar_position[4];
   double pitchSolve(double s, double z, double v);
   double newtonUpdate(double s, double v, double angle);
-  //double (double s, double y, double v);
+  double getYaw(double fire_yaw, double tar_yaw);
   
 };
 
