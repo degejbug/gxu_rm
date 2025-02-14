@@ -26,7 +26,8 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
   tracker_->tracking_thres = this->declare_parameter("tracker.tracking_thres", 5);
   lost_time_thres_ = this->declare_parameter("tracker.lost_time_thres", 0.3);
   // Trajectory
-  trajectory_ = std::make_unique<Trajectory>(25.0,0.00962);
+  double air_coef = this->declare_parameter("tracker.air_coef", 0.019);
+  trajectory_ = std::make_unique<Trajectory>(air_coef,25.0);
 
   // EKF
   // xa = x_armor, xc = x_robot_center
@@ -89,7 +90,7 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
   // s2qyaw_max_ = declare_parameter("ekf.sigma2_q_yaw_max", 10.0);
   // s2qyaw_min_ = declare_parameter("ekf.sigma2_q_yaw_min", 5.0);//origin
 
-  s2qxyz_ = declare_parameter("ekf.sigma2_q_xyz", 0.05);
+  s2qxyz_ = declare_parameter("ekf.sigma2_q_xyz", 2.0);
   s2qyaw_ = declare_parameter("ekf.sigma2_q_yaw", 5.0);
   //
   s2qr_ = declare_parameter("ekf.sigma2_q_r", 800.0);
@@ -283,7 +284,7 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       tracker_->tracker_state == Tracker::TEMP_LOST) {
       target_msg.tracking = true;
       //test
-      target_msg.is_fire = true;
+      target_msg.is_fire = false;
       if (tracker_->tracker_state == Tracker::TEMP_LOST) target_msg.is_fire = false;
       
       // Fill target message
@@ -307,7 +308,6 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       trajectory_->autoSolveTrajectory(target_msg, gxu_info_msg);
       //
       // target_msg.position.x = 0.5;
-      // target_msg.position.y = -0.4;
       //
     } else if (tracker_->tracker_state == Tracker::CHANGE_TARGET) {
       target_msg.tracking = false;

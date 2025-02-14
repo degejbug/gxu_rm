@@ -188,7 +188,7 @@ void RMSerialDriver::receiveData()
           q.setRPY(0, packet.pitch, 0);
           t.transform.rotation = tf2::toMsg(q);
           t.transform.translation.x = 0;
-          t.transform.translation.z = 0.20;
+          t.transform.translation.z = 0.0;
           tf_broadcaster_->sendTransform(t);
 
           // publish time

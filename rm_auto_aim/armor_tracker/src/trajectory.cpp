@@ -9,7 +9,7 @@ namespace rm_auto_aim
 Trajectory::Trajectory(double k, double v)
 : k(k),
   v(v),
-  s_bias(0.12),
+  s_bias(0.20),
   z_bias(0.02),
   bias_time(10.0),
   tempdz(0.0)
@@ -39,11 +39,12 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
   std::sqrt(target_msg.position.x *target_msg.position.x + target_msg.position.y *target_msg.position.y) > 1e-4 ?
   std::sqrt(target_msg.position.x *target_msg.position.x + target_msg.position.y *target_msg.position.y) : 1e-4;
   
-  info_msg.yaw = v;
   double estimate_t = estimate_distance / v;
+  target_msg.radius_1 = 0.2;
+  target_msg.radius_1 = 0.2;
   //info_msg.position_diff = estimate_distance;
   info_msg.yaw_diff = estimate_t;
-  info_msg.yaw = 0.0;
+  info_msg.yaw = k;
   //test
   //pnp在远距离时出现高度解算误差，用线性函数强行拟合到正确坐标
   //tvec误差可能是标定问题
@@ -63,8 +64,10 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
       for (int i = 0; i<3; i++) {
           double tmp_yaw = aim_yaw + i * 2.0 * PI/3.0;  // 2/3PI
           double r =  (target_msg.radius_1 + target_msg.radius_2)/2;   //理论上r1=r2 这里取个平均值
-          tar_position[i].x = target_msg.position.x - r*std::cos(tmp_yaw);
-          tar_position[i].y = target_msg.position.y - r*std::sin(tmp_yaw);
+          //
+          tar_position[i].x = target_msg.position.x + r*std::cos(tmp_yaw);
+          tar_position[i].y = target_msg.position.y + r*std::sin(tmp_yaw);
+          //
           tar_position[i].z = target_msg.position.z;
           tar_position[i].yaw = tmp_yaw;
       }
@@ -82,6 +85,7 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
     }
 
     //尽量打击接近yaw=0的装甲板
+    // double yaw_diff_min = fabsf(std::atan2(tar_position[0].y, tar_position[0].x) - car_center_yaw);
     double yaw_diff_min = fabsf(std::atan2(tar_position[0].y, tar_position[0].x) - car_center_yaw);
     for (int i = 0; i<4; i++) {
         double temp_yaw_diff = fabsf(std::atan2(tar_position[i].y, tar_position[i].x) - car_center_yaw);
@@ -92,14 +96,25 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
         }
     }
   }
+  //打击前方装甲板
+  if(idx == 1) idx = 3;
+  if(idx == 2) idx = 0;
+  if(idx == 0){
+    target_msg.is_fire = true;
+  }
+  if(std::fabs(target_msg.v_yaw < 0.1)){
+    //idx = 0;
+    target_msg.is_fire = true;
+  }
+  //
   auto aim_z = tar_position[idx].z + target_msg.velocity.z * timeDelay;//test
   auto aim_x = tar_position[idx].x + target_msg.velocity.x * timeDelay;
   auto aim_y = tar_position[idx].y + target_msg.velocity.y * timeDelay;
   double distance = std::sqrt((aim_x) * (aim_x) + (aim_y) * (aim_y)) - s_bias;
   //手动函数补偿高度
   //info_msg.position_diff = distance;
-  info_msg.position_diff = estimate_distance;
-  z_bias = 0.65; //4.37 0.27 | 4.93 0.65
+  info_msg.position_diff = tar_position[idx].yaw;
+  z_bias = distance * 0.028;
   //
   double pitch = 0.0;
   double yaw = 0.0;
@@ -108,12 +123,12 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
   
   //纠正2025赛季全向轮步由于c板倒置出现的问题
   //纠正2025赛季全向轮步摄像头位置误差问题
-  temp_yaw = -temp_yaw-0.025;
+  temp_yaw = -temp_yaw-0.005;
   temp_pitch = -temp_pitch;
   //
 
   if(temp_pitch)
-    pitch = temp_pitch;
+    pitch = temp_pitch ;//* 1.5;
   if(aim_x || aim_y)
     yaw = temp_yaw;
   target_msg.position.x = yaw;
@@ -125,7 +140,7 @@ double Trajectory::newtonUpdate(double s, double v, double angle)
 {
   double z;
   //t为给定v与angle时的飞行时间
-  double t = (double)((exp(k * s) - 1) / (k * v * cos(angle)));
+  double t = (double)((std::exp(k * s) - 1) / (k * v * std::cos(angle)));
   if(t < 0)
   {
       //由于严重超出最大射程，计算过程中浮点数溢出，导致t变成负数
@@ -135,7 +150,8 @@ double Trajectory::newtonUpdate(double s, double v, double angle)
       return 0;
   }
   //z为给定v与angle时的高度
-  z = v * std::sin(angle) * t / std::cos(angle) + 0.5 * GRAVITY * t * t / std::cos(angle) / std::cos(angle);//wu          
+  //z = v * std::sin(angle) * t / std::cos(angle) + 0.5 * GRAVITY * t * t / std::cos(angle) / std::cos(angle);//wu
+  z = (v * std::sin(angle) * t - GRAVITY * t * t / 2);          
                 
   return z;
 }
@@ -145,24 +161,24 @@ double Trajectory::pitchSolve(double s, double z, double v)
   double z_temp, z_actual, dz;
   double angle_pitch;
   //int i = 0;
-  int count = 0;
   z_temp = z;
   // iteration
-  do//for (i = 0; i < 20; i++)
+  for (int i = 0; i < 40; i++)
   {
-      angle_pitch = std::atan2(z_temp, s); // rad
-      z_actual = newtonUpdate(s, v, angle_pitch);
-      if(z_actual == 0)
-      {
-          angle_pitch = 0;
-          break;
-      }
-      dz = 0.6*(z - z_actual);
-      z_temp = z_temp + dz;
+    angle_pitch = std::atan2(z_temp, s); // rad
+    z_actual = newtonUpdate(s, v, angle_pitch);
+    if(z_actual == 0)
+    {
+        angle_pitch = 0;
+        break;
+    }
+    dz = 0.3*(z - z_actual);
+    z_temp = z_temp + dz;
 
-      count++; if (count >= 80)break;
-      
-  }while (fabsf(dz) < 0.00001);
+    if (fabsf(dz) < 0.00001){
+      break;
+    }   
+  }
 
   return angle_pitch;
 }
