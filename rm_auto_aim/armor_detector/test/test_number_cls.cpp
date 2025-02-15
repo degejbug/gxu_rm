@@ -36,7 +36,9 @@ TEST(test_nc, benchmark)
 
   for (int i = 0; i < warm_up + loop_num; i++) {
     auto start = hrc::now();
-    nc.classify(dummy_armors);
+    for (auto & armor : dummy_armors){
+      nc.classify(test_mat, armor);
+    }   
     auto end = hrc::now();
     double time = std::chrono::duration<double, std::milli>(end - start).count();
     if (i >= warm_up) {

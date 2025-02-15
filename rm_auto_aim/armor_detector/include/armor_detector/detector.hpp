@@ -3,17 +3,23 @@
 // Licensed under the MIT License.
 
 #ifndef ARMOR_DETECTOR__DETECTOR_HPP_
-#define ARMOR_DETECTOR__DETECTOR_HPP_
+#define ARMOR_DETECTOR__DETECTOR_HPP_ 
 
 // OpenCV
 #include <opencv2/core.hpp>
+#include <opencv2/core/base.hpp>
+#include <opencv2/core/mat.hpp>
 #include <opencv2/core/types.hpp>
+#include <opencv2/imgproc.hpp>
 
 // STD
+#include <algorithm>
 #include <cmath>
 #include <string>
 #include <vector>
 
+
+#include "armor_detector/light_corner_corrector.hpp"
 #include "armor_detector/armor.hpp"
 #include "armor_detector/number_classifier.hpp"
 #include "auto_aim_interfaces/msg/debug_armors.hpp"
@@ -33,6 +39,7 @@ public:
     double max_angle;
     // area condition
     double min_fill_ratio;
+    int color_diff_thresh;
   };
 
   struct ArmorParams
@@ -63,8 +70,10 @@ public:
   int detect_color;
   LightParams l;
   ArmorParams a;
+  
 
   std::unique_ptr<NumberClassifier> classifier;
+  std::unique_ptr<LightCornerCorrector> corner_corrector;//test
 
   // Debug msgs
   cv::Mat binary_img;
@@ -74,9 +83,9 @@ public:
 private:
   bool isLight(const Light & possible_light);
   bool containLight(
-    const Light & light_1, const Light & light_2, const std::vector<Light> & lights);
+    const int i, const int j, const std::vector<Light> &lights);
   ArmorType isArmor(const Light & light_1, const Light & light_2);
-
+  cv::Mat gray_img_;//test
   std::vector<Light> lights_;
   std::vector<Armor> armors_;
 };

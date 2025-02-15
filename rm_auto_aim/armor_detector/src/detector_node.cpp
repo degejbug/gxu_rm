@@ -91,11 +91,10 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
       pnp_solver_ = std::make_unique<PnPSolver>(camera_info->k, camera_info->d);
       cam_info_sub_.reset();
     });
-  //test
+
   img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
     "/image_raw", rclcpp::SensorDataQoS(),
     std::bind(&ArmorDetectorNode::imageCallback, this, std::placeholders::_1));
-  //
 }
 
 void ArmorDetectorNode::taskCallback(const std_msgs::msg::String::SharedPtr task_msg)
@@ -224,7 +223,9 @@ std::unique_ptr<Detector> ArmorDetectorNode::initDetector()
     this->declare_parameter("ignore_classes", std::vector<std::string>{"negative"});
   detector->classifier =
     std::make_unique<NumberClassifier>(model_path, label_path, threshold, ignore_classes);
-
+  //test corner corrector
+  detector->corner_corrector = std::make_unique<LightCornerCorrector>();
+  //
   return detector;
 }
 
