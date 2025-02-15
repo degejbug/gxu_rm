@@ -45,20 +45,15 @@ bool PnPSolver::solvePnP(const Armor & armor, cv::Mat & rvec, cv::Mat & tvec)
 
   // Solve pnp
   auto object_points = armor.type == ArmorType::SMALL ? small_armor_points_ : large_armor_points_;
-  // //test
-  // auto temp_rvec = rvec;
-  // auto temp_tvec = tvec;
-  // cv::solvePnP(
-  //   object_points, image_armor_points, camera_matrix_, dist_coeffs_, rvec, temp_tvec, false,
-  //   cv::SOLVEPNP_EPNP);
-  // //use ippe tvec and epnp rvec test
-  // bool is_pnp_ok = cv::solvePnP(
-  //   object_points, image_armor_points, camera_matrix_, dist_coeffs_, temp_rvec, tvec, false,
-  //   cv::SOLVEPNP_IPPE);
-  // //
+  //test
   bool is_pnp_ok = cv::solvePnP(
     object_points, image_armor_points, camera_matrix_, dist_coeffs_, rvec, tvec, false,
-    cv::SOLVEPNP_IPPE);//origin
+    cv::SOLVEPNP_IPPE_SQUARE);
+  //
+  
+  // bool is_pnp_ok = cv::solvePnP(
+  //   object_points, image_armor_points, camera_matrix_, dist_coeffs_, rvec, tvec, false,
+  //   cv::SOLVEPNP_IPPE);//origin
   return is_pnp_ok;
 }
 

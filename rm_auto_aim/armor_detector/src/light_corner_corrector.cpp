@@ -165,10 +165,46 @@ cv::Point2f LightCornerCorrector::findCorner(const cv::Mat &gray_img,
       candidates.emplace_back(corner);
     }
   }
+  // if (!candidates.empty()) {
+  //   cv::Point2f result = std::accumulate(candidates.begin(), candidates.end(), cv::Point2f(0, 0));
+  //   return result / static_cast<float>(candidates.size());
+  // }
+
   if (!candidates.empty()) {
     cv::Point2f result = std::accumulate(candidates.begin(), candidates.end(), cv::Point2f(0, 0));
-    return result / static_cast<float>(candidates.size());
-  }
+    result = result / static_cast<float>(candidates.size());
+
+    // 新增：沿灯条自身长轴方向延长0.75倍原距离
+    int oper = order == "top" ? 1 : -1;
+    
+    // 关键修改：使用灯条自身存储的长轴方向（light.axis）
+    cv::Point2f dir(light.axis.x * oper, light.axis.y * oper);  // 延长方向
+    
+    // 手动归一化
+    float dir_norm = cv::norm(dir);
+    if (dir_norm > 0) {
+      dir /= dir_norm;  // 现在dir是单位向量
+    } else {
+      return result;    // 避免零向量操作
+    }
+
+    // 计算原投影长度（沿灯条长轴方向）
+    cv::Point2f vec = result - light.center;  // 使用灯条中心作为起点
+    float projection = vec.dot(dir);  // 使用单位向量计算投影
+
+    if (projection > 0) {  // 确保方向一致
+      // 计算延长量并应用
+      cv::Point2f extension = dir * (projection * 1.5f);
+      cv::Point2f new_result = result + extension;
+      
+      // 边界检查
+      if (inImage(new_result)) {
+        result = new_result;
+      }
+    }
+
+    return result;
+    }
 
   return cv::Point2f(-1, -1);
 }
