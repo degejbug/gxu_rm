@@ -113,7 +113,7 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
   //手动函数补偿高度
   info_msg.yaw = std::atan2(tar_position[idx].y, tar_position[idx].x) - car_center_yaw;
   info_msg.yaw_diff = idx;
-  z_bias = distance * 0.028 + 0.08;
+  z_bias = distance * 0.04 + 0.08 ;
   //
   double pitch = 0.0;
   double yaw = 0.0;
@@ -122,7 +122,7 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
   //temp_yaw = (double)(std::atan2(target_msg.position.y, target_msg.position.x));
   //纠正2025赛季全向轮步由于c板倒置出现的问题
   //纠正2025赛季全向轮步摄像头位置误差问题
-  temp_yaw = -temp_yaw-0.005;
+  temp_yaw = -temp_yaw-0.01;
   temp_pitch = -temp_pitch;
   //
 
