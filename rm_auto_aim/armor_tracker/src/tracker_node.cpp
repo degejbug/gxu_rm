@@ -85,25 +85,25 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
   // update_Q - process noise covariance matrix
   
   //test
-  // s2qxyz_max_ = declare_parameter("ekf.sigma2_q_xyz_max", 0.1);
-  // s2qxyz_min_ = declare_parameter("ekf.sigma2_q_xyz_min", 0.05);
-  // s2qyaw_max_ = declare_parameter("ekf.sigma2_q_yaw_max", 10.0);
-  // s2qyaw_min_ = declare_parameter("ekf.sigma2_q_yaw_min", 5.0);//origin
+  s2qxyz_max_ = declare_parameter("ekf.sigma2_q_xyz_max", 0.1);
+  s2qxyz_min_ = declare_parameter("ekf.sigma2_q_xyz_min", 0.05);
+  s2qyaw_max_ = declare_parameter("ekf.sigma2_q_yaw_max", 10.0);
+  s2qyaw_min_ = declare_parameter("ekf.sigma2_q_yaw_min", 5.0);//origin
 
-  s2qxyz_ = declare_parameter("ekf.sigma2_q_xyz", 2.0);
-  s2qyaw_ = declare_parameter("ekf.sigma2_q_yaw", 5.0);
+  // s2qxyz_ = declare_parameter("ekf.sigma2_q_xyz", 2.0);
+  // s2qyaw_ = declare_parameter("ekf.sigma2_q_yaw", 5.0);
   //
   s2qr_ = declare_parameter("ekf.sigma2_q_r", 800.0);
   auto u_q = [this](const Eigen::VectorXd & x_p) {
-    //
-    // double vx = x_p(1), vy = x_p(3), v_yaw = x_p(7);
-    // double dx = pow(pow(vx, 2) + pow(vy, 2), 0.5);
-    // double dy = abs(v_yaw);//origin
+    
+    double vx = x_p(1), vy = x_p(3), v_yaw = x_p(7);
+    double dx = pow(pow(vx, 2) + pow(vy, 2), 0.5);
+    double dy = abs(v_yaw);//origin
     Eigen::MatrixXd q(9, 9);
     double x, y;
-    // x = exp(-dy) * (s2qxyz_max_ - s2qxyz_min_) + s2qxyz_min_;
-    // y = exp(-dx) * (s2qyaw_max_ - s2qyaw_min_) + s2qyaw_min_; //origin
-    x = s2qxyz_, y = s2qyaw_;
+    x = exp(-dy) * (s2qxyz_max_ - s2qxyz_min_) + s2qxyz_min_;
+    y = exp(-dx) * (s2qyaw_max_ - s2qyaw_min_) + s2qyaw_min_; //origin
+    //x = s2qxyz_, y = s2qyaw_;
     //test
     double t = dt_, r = s2qr_;
     double q_x_x = pow(t, 4) / 4 * x, q_x_vx = pow(t, 3) / 2 * x, q_vx_vx = pow(t, 2) * x;

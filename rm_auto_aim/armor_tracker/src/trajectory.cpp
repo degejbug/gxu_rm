@@ -41,8 +41,8 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
   std::sqrt(target_msg.position.x *target_msg.position.x + target_msg.position.y *target_msg.position.y) : 1e-4;
   
   double estimate_t = estimate_distance / v;
-  // target_msg.radius_1 = 0.3;
-  // target_msg.radius_2 = 0.3;
+  //target_msg.radius_1 = 0.15;
+  //target_msg.radius_2 = 0.24;
   //info_msg.position_diff = estimate_distance;
   //test
   //pnp在远距离时出现高度解算误差，用线性函数强行拟合到正确坐标
