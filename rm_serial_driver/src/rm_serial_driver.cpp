@@ -194,15 +194,22 @@ void RMSerialDriver::receiveData()
           timestamp_offset_ = this->get_parameter("timestamp_offset").as_double();
           t.header.stamp = this->now() - rclcpp::Duration::from_seconds(timestamp_offset_);
           t.header.frame_id = "gimbal_imu";
-          t.child_frame_id = "gimbal_link";
+          t.child_frame_id = "yaw_link";
           /*
 
           
           */
           tf2::Quaternion q;
-          q.setRPY(packet.roll, packet.pitch, packet.yaw);
+          q.setRPY(0, 0, packet.yaw);
           t.transform.rotation = tf2::toMsg(q);
           
+          tf_broadcaster_->sendTransform(t);
+
+          t.header.frame_id = "yaw_link";
+          t.child_frame_id = "pitch_link";
+          q.setRPY(0, packet.pitch, 0);
+          t.transform.rotation = tf2::toMsg(q);
+          t.transform.translation.z = -0.08; // z 方向偏移 -0.10 米
           tf_broadcaster_->sendTransform(t);
 
           t.header.frame_id = "livox_frame";
@@ -213,9 +220,6 @@ void RMSerialDriver::receiveData()
           // t.transform.translation.y = 0.0;
           t.transform.translation.z = -0.10;  // z 方向偏移 -0.10 米
           tf_broadcaster_->sendTransform(t);
-          RCLCPP_INFO(
-            get_logger(), "roll: %f, pitch: %f, relative angle: %f", packet.roll,
-            packet.pitch, packet.relative_angle);
 
           // publish time
           auto_aim_interfaces::msg::TimeInfo aim_time_info;

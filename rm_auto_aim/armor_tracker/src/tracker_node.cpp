@@ -295,6 +295,9 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       target_msg.radius_1 = state(8);
       target_msg.radius_2 = tracker_->another_r;
       target_msg.dz = tracker_->dz;
+
+      publishMarkers(target_msg);
+      
       //used for debug test
       // info_msg.position.x = target_msg.position.x;
       // info_msg.position.y = target_msg.position.y;
@@ -319,7 +322,6 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
   target_pub_->publish(target_msg);
 
 
-  publishMarkers(target_msg);
 }
 
 void ArmorTrackerNode::publishMarkers(const auto_aim_interfaces::msg::Target & target_msg)
