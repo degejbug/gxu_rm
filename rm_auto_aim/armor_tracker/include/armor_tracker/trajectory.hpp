@@ -36,7 +36,7 @@ public:
   , double fire_yaw);
   
 
-private:
+private: 
   double k ;//弹道系数
   double v ;//子弹速度
   double s_bias;         //枪口前推的距离
@@ -54,7 +54,7 @@ private:
   double pitchSolve(double s, double z, double v);
   double newtonUpdate(double s, double v, double angle);
   double getYaw(double fire_yaw, double tar_yaw);
-  
+  double calculateAngle(double x1, double y1, double x2, double y2);
 };
 
 }  // namespace rm_auto_aim

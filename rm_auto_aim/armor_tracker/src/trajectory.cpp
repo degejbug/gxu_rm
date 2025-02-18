@@ -11,7 +11,7 @@ Trajectory::Trajectory(double k, double v)
   v(v),
   s_bias(0.20),
   z_bias(0.02),
-  bias_time(10.0),
+  bias_time(167.5),
   tempdz(0.0)
 {
 }
@@ -43,18 +43,24 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
   double estimate_t = estimate_distance / v;
   //target_msg.radius_1 = 0.15;
   //target_msg.radius_2 = 0.24;
-  //info_msg.position_diff = estimate_distance;
   //test
   //pnp在远距离时出现高度解算误差，用线性函数强行拟合到正确坐标
   //tvec误差可能是标定问题
   //
   // 线性预测
-  double timeDelay = bias_time/1000.0 + estimate_t;
+  double timeDelay = bias_time/1000.0 + estimate_t ; 
   double aim_yaw = target_msg.yaw + target_msg.v_yaw * timeDelay;
   double car_center_yaw = std::atan2(target_msg.position.y, target_msg.position.x);
   //test
-  // bool is_rotate = false;
-  // if (target_msg.v_yaw > 0.1) is_rotate = true;
+  target_msg.v_yaw = 2.6;
+  if(target_msg.radius_1 < target_msg.radius_2){
+    target_msg.radius_1 = 0.15;
+    target_msg.radius_2 = 0.24;
+  }else{
+    target_msg.radius_1 = 0.24;
+    target_msg.radius_2 = 0.15;
+  }
+  
   //
 
   int use_1 = 1;
@@ -98,7 +104,10 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
   //打击前方装甲板
   if(idx == 1) idx = 3;
   if(idx == 2) idx = 0;
-  if(idx == 0){
+
+  double the_yaw = calculateAngle(target_msg.position.x, target_msg.position.y, 
+                             tar_position[idx].x, tar_position[idx].y);
+  if(the_yaw < 0.2){
     target_msg.is_fire = true;
   }
   // if(std::fabs(target_msg.v_yaw < 0.1)){
@@ -111,9 +120,10 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
   auto aim_y = tar_position[idx].y + target_msg.velocity.y * timeDelay;
   double distance = std::sqrt((aim_x) * (aim_x) + (aim_y) * (aim_y)) - s_bias;
   //手动函数补偿高度
-  info_msg.yaw = std::atan2(tar_position[idx].y, tar_position[idx].x) - car_center_yaw;
+  info_msg.yaw = calculateAngle(target_msg.position.x, target_msg.position.y, 
+                                tar_position[idx].x, tar_position[idx].y);
   info_msg.yaw_diff = idx;
-  z_bias = distance * 0.028 + 0.08;
+  z_bias = distance * 0.024 - 0.03;
   //
   double pitch = 0.0;
   double yaw = 0.0;
@@ -122,7 +132,7 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
   //temp_yaw = (double)(std::atan2(target_msg.position.y, target_msg.position.x));
   //纠正2025赛季全向轮步由于c板倒置出现的问题
   //纠正2025赛季全向轮步摄像头位置误差问题
-  temp_yaw = -temp_yaw-0.005;
+  temp_yaw = -temp_yaw-0.02;
   temp_pitch = -temp_pitch;
   //
 
@@ -197,4 +207,38 @@ double Trajectory::getYaw(double fire_yaw, double tar_yaw)
   return return_yaw;
 }
 
+double Trajectory::calculateAngle(double x1, double y1, double x2, double y2) {
+  // 确定较远点P
+  double OA = sqrt(x1*x1 + y1*y1);
+  double OB = sqrt(x2*x2 + y2*y2);
+  double xp, yp;
+  if (OA > OB) {
+      xp = x1;
+      yp = y1;
+  } else {
+      xp = x2;
+      yp = y2;
+  }
+
+  // 计算向量AB的模长d
+  double dx = x2 - x1;
+  double dy = y2 - y1;
+  double d = sqrt(dx*dx + dy*dy);
+
+  // 计算点积
+  double ab_dot_op = dx * xp + dy * yp;
+
+  // 计算OP的模长
+  double op_norm = sqrt(xp*xp + yp*yp);
+
+  // 计算夹角（弧度）
+  double cos_theta = ab_dot_op / (d * op_norm);
+  double theta = acos(cos_theta);
+
+  if (theta > M_PI/2) {
+    theta = M_PI - theta;
+  }
+
+  return theta; // 返回弧度值，转换为角度需乘以 (180 / π)
+}
 }//namespace rm_auto_aim

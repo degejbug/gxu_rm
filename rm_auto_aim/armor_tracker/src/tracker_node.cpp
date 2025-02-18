@@ -27,7 +27,7 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
   lost_time_thres_ = this->declare_parameter("tracker.lost_time_thres", 0.3);
   // Trajectory
   double air_coef = this->declare_parameter("tracker.air_coef", 0.019);
-  trajectory_ = std::make_unique<Trajectory>(air_coef,25.0);
+  trajectory_ = std::make_unique<Trajectory>(air_coef,22.0);
 
   // EKF
   // xa = x_armor, xc = x_robot_center
@@ -295,7 +295,6 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       target_msg.tracking = true;
       //test
       target_msg.is_fire = false;
-      if (tracker_->tracker_state == Tracker::TEMP_LOST) target_msg.is_fire = false;
       
       // Fill target message
       const auto & state = tracker_->target_state;
@@ -317,7 +316,7 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       //该函数存在一个隐藏变换用于匹配接口
       trajectory_->autoSolveTrajectory(target_msg, gxu_info_msg, yaw_test);
       //
-      // target_msg.position.x = 0.5;
+      //if (tracker_->tracker_state == Tracker::TEMP_LOST) target_msg.is_fire = false;
       //
     } else if (tracker_->tracker_state == Tracker::CHANGE_TARGET) {
       target_msg.tracking = false;
