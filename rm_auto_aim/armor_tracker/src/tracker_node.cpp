@@ -26,7 +26,7 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
   tracker_->tracking_thres = this->declare_parameter("tracker.tracking_thres", 5);
   lost_time_thres_ = this->declare_parameter("tracker.lost_time_thres", 0.3);
   // Trajectory
-  trajectory_ = std::make_unique<Trajectory>(25,0.038);
+  trajectory_ = std::make_unique<Trajectory>(0.019,25.0);
 
   // EKF
   // xa = x_armor, xc = x_robot_center
@@ -291,13 +291,13 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       target_msg.position.z = state(4);
       target_msg.velocity.z = state(5);
       target_msg.yaw = state(6);
-      target_msg.v_yaw = state(7);
+      target_msg.v_yaw = 3.0;
       target_msg.radius_1 = state(8);
       target_msg.radius_2 = tracker_->another_r;
       target_msg.dz = tracker_->dz;
 
       publishMarkers(target_msg);
-      
+
       //used for debug test
       // info_msg.position.x = target_msg.position.x;
       // info_msg.position.y = target_msg.position.y;
@@ -307,7 +307,7 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       trajectory_->autoSolveTrajectory(target_msg);
       //test
       // target_msg.position.x = 1;
-      // target_msg.position.y = 0.2;
+      //target_msg.position.y = 0.4;
       // target_msg.position.z = 0;
       //
     } else if (tracker_->tracker_state == Tracker::CHANGE_TARGET) {
