@@ -11,7 +11,7 @@ Trajectory::Trajectory(double k, double v)
   v(v),
   s_bias(0.20),
   z_bias(0.02),
-  bias_time(167.5),
+  bias_time(170.5),
   tempdz(0.0)
 {
 }
@@ -107,7 +107,7 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
 
   double the_yaw = calculateAngle(target_msg.position.x, target_msg.position.y, 
                              tar_position[idx].x, tar_position[idx].y);
-  if(the_yaw < 0.2){
+  if(the_yaw < 0.4){
     target_msg.is_fire = true;
   }
   // if(std::fabs(target_msg.v_yaw < 0.1)){
@@ -123,7 +123,7 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
   info_msg.yaw = calculateAngle(target_msg.position.x, target_msg.position.y, 
                                 tar_position[idx].x, tar_position[idx].y);
   info_msg.yaw_diff = idx;
-  z_bias = distance * 0.024 - 0.03;
+  z_bias = distance * 0.014 - 0.04;
   //
   double pitch = 0.0;
   double yaw = 0.0;
