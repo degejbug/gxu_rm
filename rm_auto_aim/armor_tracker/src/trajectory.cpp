@@ -11,24 +11,25 @@ Trajectory::Trajectory(double k, double v)
   v(v),
   s_bias(0.20),
   z_bias(0.02),
-  bias_time(170.5),
+  bias_time(167.5),
   tempdz(0.0)
 {
 }
 
 void Trajectory::initSolver()
 {
-  k = 0.038;//弹道系数
-  v = 25.0;
-  s_bias = 0.0;         
+  k = 0.038;//小弹丸空气阻力系数
+  v = 25.0;//小弹丸初速度
+  s_bias = 0.0;
   z_bias = 0.0;
   bias_time = 100.0;
-  tempdz = 0.0; 
+  tempdz = 0.0;
 }
 
+//弹道解算函数666
 void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_msg
 , auto_aim_interfaces::msg::TrackerInfo & info_msg
-, double fire_yaw)
+, const double & gimbal_now_yaw ,const double & gimbal_now_pitch)
 {
   //计算四块装甲板的位置
   //装甲板id顺序，以四块装甲板为例，逆时针编号
@@ -36,11 +37,13 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
   //   3     1
   //      0
   //double current_yaw = 0;
-  double estimate_distance = 
-  std::sqrt(target_msg.position.x *target_msg.position.x + target_msg.position.y *target_msg.position.y) > 1e-4 ?
-  std::sqrt(target_msg.position.x *target_msg.position.x + target_msg.position.y *target_msg.position.y) : 1e-4;
+  //使用原始数据估算的枪口到目标车中心距离?
+  double estimate_distance_center =
+  (std::sqrt(target_msg.position.x *target_msg.position.x + target_msg.position.y *target_msg.position.y) > 1e-4 ?
+  std::sqrt(target_msg.position.x *target_msg.position.x + target_msg.position.y *target_msg.position.y) : 1e-4);
   
-  double estimate_t = estimate_distance / v;
+  //double estimate_t_init = estimate_distance / v;
+  double estimate_t_init = fabsf(estimate_distance_center / v / std::cos(gimbal_now_pitch)); //计算获得一个估计的初预测飞行时间，考虑到pitch有正负值，故飞行时间取绝对值?
   //target_msg.radius_1 = 0.15;
   //target_msg.radius_2 = 0.24;
   //test
@@ -48,9 +51,9 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
   //tvec误差可能是标定问题
   //
   // 线性预测
-  double timeDelay = bias_time/1000.0 + estimate_t ; 
-  double aim_yaw = target_msg.yaw + target_msg.v_yaw * timeDelay;
-  double car_center_yaw = std::atan2(target_msg.position.y, target_msg.position.x);
+  double timeDelay = bias_time/1000.0 + estimate_t_init;  //偏置时间加上子弹飞行时间获得总预测时间
+  double aim_yaw = target_msg.yaw + target_msg.v_yaw * timeDelay; //粗略获得预测后的目标装甲板的yaw角度
+  double car_center_yaw = std::atan2(target_msg.position.y, target_msg.position.x); //计算目标中心和自身中心的相差角度，以自身X轴为0边
   //test
   target_msg.v_yaw = 2.6;
   if(target_msg.radius_1 < target_msg.radius_2){
@@ -60,32 +63,35 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
     target_msg.radius_1 = 0.24;
     target_msg.radius_2 = 0.15;
   }
-  
-  //
 
-  int use_1 = 1;
+/*选板逻辑*/
+  int use_1 = 1;// 装甲板高度计算标志位
   int idx = 0; // 选择的装甲板
-  if (target_msg.armors_num == 9) {  //前哨站test
+
+  //前哨站预测
+  if (target_msg.armors_num == 9) {
       for (int i = 0; i<3; i++) {
           double tmp_yaw = aim_yaw + i * 2.0 * PI/3.0;  // 2/3PI
-          double r =  (target_msg.radius_1 + target_msg.radius_2)/2;   //理论上r1=r2 这里取个平均值
+          aim_r =  (target_msg.radius_1 + target_msg.radius_2)/2;   //理论上r1=r2 这里取个平均值
           //
-          tar_position[i].x = target_msg.position.x - r*std::cos(tmp_yaw);
-          tar_position[i].y = target_msg.position.y - r*std::sin(tmp_yaw);
+          tar_position[i].x = target_msg.position.x - aim_r*std::cos(tmp_yaw);
+          tar_position[i].y = target_msg.position.y - aim_r*std::sin(tmp_yaw);
           //
           tar_position[i].z = target_msg.position.z;
           tar_position[i].yaw = tmp_yaw;
       }
 
-      //TODO 选择最优装甲板 选板逻辑你们自己写，这个一般给英雄用
-  } else {
+     
+  } 
+  //计算四块装甲板的坐标位置
+  else {
     for (int i = 0; i<4; i++) {
         double tmp_yaw = aim_yaw + i * PI/2.0;
-        double r = use_1 ? target_msg.radius_1 : target_msg.radius_2;
-        tar_position[i].x = target_msg.position.x - r*std::cos(tmp_yaw);
-        tar_position[i].y = target_msg.position.y - r*std::sin(tmp_yaw);
+        aim_r = use_1 ? target_msg.radius_1 : target_msg.radius_2;
+        tar_position[i].x = target_msg.position.x - aim_r*std::cos(tmp_yaw);
+        tar_position[i].y = target_msg.position.y - aim_r*std::sin(tmp_yaw);
         tar_position[i].z = use_1 ? target_msg.position.z : target_msg.position.z + tempdz;
-        tar_position[i].yaw = tmp_yaw;
+        tar_position[i].yaw = tmp_yaw - aim_yaw;
         use_1 = !use_1;
     }
 
@@ -101,33 +107,43 @@ void Trajectory::autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_m
         }
     }
   }
-  //打击前方装甲板
+  //打击前方装甲板？
   if(idx == 1) idx = 3;
   if(idx == 2) idx = 0;
 
-  double the_yaw = calculateAngle(target_msg.position.x, target_msg.position.y, 
+  //dif_center_yaw是装甲板距离敌方中心线的相对角度
+  double dif_center_yaw = calculateAngle(target_msg.position.x, target_msg.position.y, 
                              tar_position[idx].x, tar_position[idx].y);
-  if(the_yaw < 0.4){
+  if(dif_center_yaw < 0.2){
     target_msg.is_fire = true;
   }
-  // if(std::fabs(target_msg.v_yaw < 0.1)){
-  //   //idx = 0;
-  //   target_msg.is_fire = true;
-  // }
-  //
-  auto aim_z = tar_position[idx].z + target_msg.velocity.z * timeDelay;//test
+
+//选板完成后利用迭代法计算pitch并且得到实际子弹飞行速度
+  //迭代法计算pitch
+  auto aim_z = tar_position[idx].z + target_msg.velocity.z * timeDelay;
+  //获得中心到对面装甲板的距离用于求pitch
+  double estimate_distance_armor =
+  (std::sqrt(tar_position[idx].x * tar_position[idx].x + tar_position[idx].y * tar_position[idx].y) > 1e-4 ?
+  std::sqrt(tar_position[idx].x * tar_position[idx].x + tar_position[idx].y * tar_position[idx].y) : 1e-4) - s_bias;
+  //手动补偿高度
+  z_bias = estimate_distance_armor * 0.024 - 0.03;
+  double temp_pitch = pitchSolve(estimate_distance_armor, aim_z + z_bias, v);
+  //计算实际延迟
+  timeDelay = bias_time/1000.0 + predict_time;
+
+  //用实际延迟计算v_yaw下第一层运动下目标装甲板的位置
+  tar_position[idx].x = target_msg.position.x - aim_r*std::cos(tar_position[idx].yaw + target_msg.yaw + target_msg.v_yaw * timeDelay);
+  tar_position[idx].y = target_msg.position.y - aim_r*std::sin(tar_position[idx].yaw + target_msg.yaw + target_msg.v_yaw * timeDelay);
+  //带入车移动速度，计算第二层运动下目标装甲板位置
   auto aim_x = tar_position[idx].x + target_msg.velocity.x * timeDelay;
   auto aim_y = tar_position[idx].y + target_msg.velocity.y * timeDelay;
-  double distance = std::sqrt((aim_x) * (aim_x) + (aim_y) * (aim_y)) - s_bias;
-  //手动函数补偿高度
+  //计算预测后云台的目标yaw角
   info_msg.yaw = calculateAngle(target_msg.position.x, target_msg.position.y, 
                                 tar_position[idx].x, tar_position[idx].y);
   info_msg.yaw_diff = idx;
-  z_bias = distance * 0.014 - 0.04;
   //
   double pitch = 0.0;
   double yaw = 0.0;
-  double temp_pitch = pitchSolve(distance, aim_z + z_bias, v);
   double temp_yaw = (double)(std::atan2(aim_y, aim_x));
   //temp_yaw = (double)(std::atan2(target_msg.position.y, target_msg.position.x));
   //纠正2025赛季全向轮步由于c板倒置出现的问题
@@ -160,7 +176,9 @@ double Trajectory::newtonUpdate(double s, double v, double angle)
   }
   //z为给定v与angle时的高度
   //z = v * std::sin(angle) * t / std::cos(angle) + 0.5 * GRAVITY * t * t / std::cos(angle) / std::cos(angle);//wu
-  z = (v * std::sin(angle) * t - GRAVITY * t * t / 2);          
+  z = (v * std::sin(angle) * t - GRAVITY * t * t / 2);
+  //更新预测时间    
+  predict_time = t;      
                 
   return z;
 }

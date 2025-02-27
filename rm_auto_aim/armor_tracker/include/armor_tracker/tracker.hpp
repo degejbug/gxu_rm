@@ -91,6 +91,10 @@ private:
   int change_count_;
 
   double last_yaw_;
+
+  double gimbal_roll_;
+  double gimbal_yaw_;
+  double gimbal_pitch_;
 };
 
 }  // namespace rm_auto_aim

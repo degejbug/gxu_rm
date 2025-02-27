@@ -32,8 +32,8 @@ public:
   Trajectory(double v, double k);
   void initSolver();
   void autoSolveTrajectory(auto_aim_interfaces::msg::Target & target_msg
-  , auto_aim_interfaces::msg::TrackerInfo & info_msg
-  , double fire_yaw);
+    , auto_aim_interfaces::msg::TrackerInfo & info_msg
+    , const double & gimbal_now_yaw ,const double & gimbal_now_pitch);
   
 
 private: 
@@ -42,6 +42,8 @@ private:
   double s_bias;         //枪口前推的距离
   double z_bias;         //yaw轴电机到枪口水平面的垂直距离
   double bias_time;        //偏置时间
+  double predict_time;      //预测时间
+  double aim_r;           //目标装甲板半径
   double tempdz;
   struct tar_pos
   {

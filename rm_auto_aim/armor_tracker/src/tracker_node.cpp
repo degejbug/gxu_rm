@@ -257,8 +257,15 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
   tf2::Quaternion test_rotate;
   tf2::fromMsg(test_trans.transform.rotation, test_rotate);
   tf2::Matrix3x3 m(test_rotate);
-  double roll,pitch,yaw_test;
-  m.getRPY(roll, pitch, yaw_test);                               
+  double tmp_roll,tmp_pitch,tmp_yaw;
+  m.getRPY(tmp_roll,tmp_pitch,gimbal_yaw_);
+  
+  test_trans = tf2_buffer_->lookupTransform("pitch_link", 
+                                            target_frame_, 
+                                            (armors_msg->header).stamp);
+  tf2::fromMsg(test_trans.transform.rotation, test_rotate);
+  m = tf2::Matrix3x3(test_rotate);
+  m.getRPY(tmp_roll,gimbal_pitch_,tmp_yaw);
   //
   auto_aim_interfaces::msg::Target target_msg;
   rclcpp::Time time = armors_msg->header.stamp;
@@ -314,7 +321,7 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
      
       publishMarkers(target_msg);
       //该函数存在一个隐藏变换用于匹配接口
-      trajectory_->autoSolveTrajectory(target_msg, gxu_info_msg, yaw_test);
+      trajectory_->autoSolveTrajectory(target_msg, gxu_info_msg, gimbal_yaw_, gimbal_pitch_);
       //
       //if (tracker_->tracker_state == Tracker::TEMP_LOST) target_msg.is_fire = false;
       //
@@ -326,7 +333,7 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
   last_time_ = time;
   //test
   //info_pub_->publish(info_msg);
-  gxu_info_msg.position_diff = yaw_test;
+  gxu_info_msg.position_diff = gimbal_yaw_;
   gxu_info_pub_->publish(gxu_info_msg);
   //
   target_pub_->publish(target_msg);

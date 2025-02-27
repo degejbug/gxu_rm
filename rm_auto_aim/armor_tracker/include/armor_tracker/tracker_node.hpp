@@ -55,6 +55,9 @@ private:
   // 
   double r_xyz_factor, r_yaw;
   double lost_time_thres_;
+  double gimbal_roll_;
+  double gimbal_yaw_;
+  double gimbal_pitch_;
   std::unique_ptr<Tracker> tracker_;
   std::unique_ptr<Trajectory> trajectory_;
 
