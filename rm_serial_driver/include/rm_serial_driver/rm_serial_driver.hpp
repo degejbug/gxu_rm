@@ -32,6 +32,8 @@
 
 #include "auto_aim_interfaces/msg/target.hpp"
 #include "auto_aim_interfaces/msg/time_info.hpp"
+#include "rm_decision_interfaces/msg/game_status.hpp"
+#include "rm_decision_interfaces/msg/robot_status.hpp"
 
 
 namespace rm_serial_driver
@@ -51,7 +53,7 @@ private:
   // void sendArmorData(const auto_aim_interfaces::msg::Target::ConstSharedPtr msg);
 
   void sendArmorData(
-    const auto_aim_interfaces::msg::Target::ConstSharedPtr msg,
+    const auto_aim_interfaces::msg::Target::ConstSharedPtr,
     const auto_aim_interfaces::msg::TimeInfo::ConstSharedPtr time_info);
 
   void sendNavData(geometry_msgs::msg::Twist msg);
@@ -91,7 +93,7 @@ private:
   double timestamp_offset_ = 0;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
-  // rclcpp::Subscription<auto_aim_interfaces::msg::Target>::SharedPtr aim_sub_;
+  //rclcpp::Subscription<auto_aim_interfaces::msg::Target>::SharedPtr aim_sub_;
 
   message_filters::Subscriber<auto_aim_interfaces::msg::Target> aim_sub_;
   message_filters::Subscriber<auto_aim_interfaces::msg::TimeInfo> aim_time_info_sub_;
@@ -107,7 +109,7 @@ private:
   std::shared_ptr<AimSync> aim_sync_;
 
 
-
+  uint16_t my_hp;
 
 
   // For debug usage
@@ -121,7 +123,8 @@ private:
 
   // Time message
   rclcpp::Publisher<auto_aim_interfaces::msg::TimeInfo>::SharedPtr aim_time_info_pub_;
-
+  rclcpp::Publisher<rm_decision_interfaces::msg::GameStatus>::SharedPtr game_status_pub_;
+  rclcpp::Publisher<rm_decision_interfaces::msg::RobotStatus>::SharedPtr robot_status_pub_;
 
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr record_controller_pub_;
 };

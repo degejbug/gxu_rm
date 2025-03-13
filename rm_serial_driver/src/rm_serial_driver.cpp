@@ -199,8 +199,11 @@ void RMSerialDriver::receiveData()
 
           
           */
+
+
           tf2::Quaternion q;
           q.setRPY(0, 0, packet.yaw);
+          
           t.transform.rotation = tf2::toMsg(q);
           
           tf_broadcaster_->sendTransform(t);
@@ -209,7 +212,7 @@ void RMSerialDriver::receiveData()
           t.child_frame_id = "pitch_link";
           q.setRPY(0, packet.pitch, 0);
           t.transform.rotation = tf2::toMsg(q);
-          t.transform.translation.z = -0.08; // z 方向偏移 -0.10 米
+          t.transform.translation.z = 0.10; // z 方向偏移 -0.10 米
           tf_broadcaster_->sendTransform(t);
 
           t.header.frame_id = "livox_frame";
@@ -218,15 +221,13 @@ void RMSerialDriver::receiveData()
           t.transform.rotation = tf2::toMsg(q);
           // t.transform.translation.x = 0.0;
           // t.transform.translation.y = 0.0;
-          t.transform.translation.z = -0.10;  // z 方向偏移 -0.10 米
-          tf_broadcaster_->sendTransform(t);
+          t.transform.translation.z = 0.10;  // z 方向偏移 -0.10 米
+          //tf_broadcaster_->sendTransform(t);
 
           // publish time
           auto_aim_interfaces::msg::TimeInfo aim_time_info;
-
           aim_time_info.header = t.header;
           aim_time_info.time = packet.timestamp;
-
           aim_time_info_pub_->publish(aim_time_info);
 
         } else {

@@ -35,7 +35,7 @@ private:
 
   // Unit: mm
   static constexpr float SMALL_ARMOR_WIDTH = 132;
-  static constexpr float SMALL_ARMOR_HEIGHT = 57;
+  static constexpr float SMALL_ARMOR_HEIGHT = 50;
   static constexpr float LARGE_ARMOR_WIDTH = 223;
   static constexpr float LARGE_ARMOR_HEIGHT = 57;
 

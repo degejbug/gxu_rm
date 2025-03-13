@@ -91,6 +91,7 @@ private:
   int change_count_;
 
   double last_yaw_;
+
 };
 
 }  // namespace rm_auto_aim

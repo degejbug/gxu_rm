@@ -16,35 +16,43 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
 {
   RCLCPP_INFO(this->get_logger(), "Starting TrackerNode!");
 
+  //开始初始化参数，这里的参数是从yaml文件中读取的
   // Maximum allowable armor distance in the XOY plane
   max_armor_distance_ = this->declare_parameter("max_armor_distance", 10.0);
 
-  // Tracker
+  // 初始化追踪参数
   double max_match_distance = this->declare_parameter("tracker.max_match_distance", 0.15);
   double max_match_yaw_diff_ = this->declare_parameter("tracker.max_match_yaw_diff", 1.0);
   tracker_ = std::make_unique<Tracker>(max_match_distance, max_match_yaw_diff_);
   tracker_->tracking_thres = this->declare_parameter("tracker.tracking_thres", 5);
   lost_time_thres_ = this->declare_parameter("tracker.lost_time_thres", 0.3);
-  // Trajectory
-  trajectory_ = std::make_unique<Trajectory>(0.019,25.0);
+  // 初始化解算参数
+  double air_coef = this->declare_parameter("tracker.air_coef", 0.019);
+  trajectory_ = std::make_unique<Trajectory>(air_coef,22.0);
 
-  // EKF
-  // xa = x_armor, xc = x_robot_center
-  // state: xc, v_xc, yc, v_yc, za, v_za, yaw, v_yaw, r
-  // measurement: xa, ya, za, yaw
-  // f - Process function
+  /*
+    拓展卡尔曼滤波初始化
+    xa = x_armor(定义后缀a为装甲板信息)
+    xc = x_robot_center(定义后缀c为机器人中心信息)
+    state: xc, v_xc, yc, v_yc, zc, v_zc, yaw, v_yaw, r 状态量:机器人中心xyz坐标以及xzy移动速度,机器人中心和自身x轴方向yaw角和yaw角速度，装甲板半径两个
+    measurement: xa, ya, za, yaw 观察量:观察装甲板的xyz坐标以及yaw角度，yaw角度是相对于目标机器人x轴方向
+  */
+
+  //状态转移函数
   auto f = [this](const Eigen::VectorXd & x) {
     Eigen::VectorXd x_new = x;
-    x_new(0) += x(1) * dt_;
-    x_new(2) += x(3) * dt_;
-    x_new(4) += x(5) * dt_;
-    x_new(6) += x(7) * dt_;
+    x_new(0) += x(1) * dt_; // xc += v_xc * dt
+    x_new(2) += x(3) * dt_; // yc += v_yc * dt
+    x_new(4) += x(5) * dt_; // za += v_za * dt
+    x_new(6) += x(7) * dt_; // yaw += v_yaw * dt
     return x_new;
   };
-  // J_f - Jacobian of process function
+
+  //状态转移矩阵
   auto j_f = [this](const Eigen::VectorXd &) {
     Eigen::MatrixXd f(9, 9);
     // clang-format off
+    //    xc  v_xc  yc  v_yc  za  v_za  yaw v_yaw r
     f <<  1,   dt_, 0,   0,   0,   0,   0,   0,   0,
           0,   1,   0,   0,   0,   0,   0,   0,   0,
           0,   0,   1,   dt_, 0,   0,   0,   0,   0, 
@@ -57,7 +65,8 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
     // clang-format on
     return f;
   };
-  // h - Observation function
+
+  // 观测函数
   auto h = [](const Eigen::VectorXd & x) {
     Eigen::VectorXd z(4);
     double xc = x(0), yc = x(2), yaw = x(6), r = x(8);
@@ -67,12 +76,13 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
     z(3) = x(6);               // yaw
     return z;
   };
-  // J_h - Jacobian of observation function
+
+  // 观测状态矩阵
   auto j_h = [](const Eigen::VectorXd & x) {
     Eigen::MatrixXd h(4, 9);
     double yaw = x(6), r = x(8);
     // clang-format off
-    //    xc   v_xc yc   v_yc za   v_za yaw         v_yaw r
+    //    xc  v_xc  yc  v_yc  za  v_za  yaw        v_yaw  r
     h <<  1,   0,   0,   0,   0,   0,   r*sin(yaw), 0,   -cos(yaw),
           0,   0,   1,   0,   0,   0,   -r*cos(yaw),0,   -sin(yaw),
           0,   0,   0,   0,   1,   0,   0,          0,   0,
@@ -81,28 +91,32 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
     return h;
   };
 
-  // update_Q - process noise covariance matrix
-  
-  //test
-  // s2qxyz_max_ = declare_parameter("ekf.sigma2_q_xyz_max", 0.1);
-  // s2qxyz_min_ = declare_parameter("ekf.sigma2_q_xyz_min", 0.05);
-  // s2qyaw_max_ = declare_parameter("ekf.sigma2_q_yaw_max", 10.0);
-  // s2qyaw_min_ = declare_parameter("ekf.sigma2_q_yaw_min", 5.0);//origin
-
-  s2qxyz_ = declare_parameter("ekf.sigma2_q_xyz", 0.05);
-  s2qyaw_ = declare_parameter("ekf.sigma2_q_yaw", 5.0);
-  //
+  // 初始化Q矩阵，这里的Q矩阵是一个对角矩阵，对角线上的元素是各个状态量的方差
+  // 通过对角线上的元素的调整，可以调整卡尔曼滤波器的收敛速度
+  // 参数从参数文件中获得，而不是这里标注的参数值，这里只是一个默认值，在参数文件里没有找到对应的参数值时，会使用这个默认值
+  s2qxyz_max_ = declare_parameter("ekf.sigma2_q_xyz_max", 0.1);
+  s2qxyz_min_ = declare_parameter("ekf.sigma2_q_xyz_min", 0.05);
+  s2qyaw_max_ = declare_parameter("ekf.sigma2_q_yaw_max", 10.0);
+  s2qyaw_min_ = declare_parameter("ekf.sigma2_q_yaw_min", 5.0);
   s2qr_ = declare_parameter("ekf.sigma2_q_r", 800.0);
+
+  // R矩阵参数初始化
+  r_xyz_factor = declare_parameter("ekf.r_xyz_factor", 0.05);
+  r_yaw = declare_parameter("ekf.r_yaw", 0.02);
+  // s2qxyz_ = declare_parameter("ekf.sigma2_q_xyz", 2.0);
+  // s2qyaw_ = declare_parameter("ekf.sigma2_q_yaw", 5.0);
+
+  // 过程噪声协方差矩阵计算
   auto u_q = [this](const Eigen::VectorXd & x_p) {
-    //
-    // double vx = x_p(1), vy = x_p(3), v_yaw = x_p(7);
-    // double dx = pow(pow(vx, 2) + pow(vy, 2), 0.5);
-    // double dy = abs(v_yaw);//origin
+    
+    double vx = x_p(1), vy = x_p(3), v_yaw = x_p(7);
+    double dx = pow(pow(vx, 2) + pow(vy, 2), 0.5);
+    double dy = abs(v_yaw);
     Eigen::MatrixXd q(9, 9);
     double x, y;
-    // x = exp(-dy) * (s2qxyz_max_ - s2qxyz_min_) + s2qxyz_min_;
-    // y = exp(-dx) * (s2qyaw_max_ - s2qyaw_min_) + s2qyaw_min_; //origin
-    x = s2qxyz_, y = s2qyaw_;
+    x = exp(-dy) * (s2qxyz_max_ - s2qxyz_min_) + s2qxyz_min_;
+    y = exp(-dx) * (s2qyaw_max_ - s2qyaw_min_) + s2qyaw_min_; 
+    //x = s2qxyz_, y = s2qyaw_;
     //test
     double t = dt_, r = s2qr_;
     double q_x_x = pow(t, 4) / 4 * x, q_x_vx = pow(t, 3) / 2 * x, q_vx_vx = pow(t, 2) * x;
@@ -122,21 +136,23 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
     // clang-format on
     return q;
   };
-  // update_R - measurement noise covariance matrix
-  r_xyz_factor = declare_parameter("ekf.r_xyz_factor", 0.05);
-  r_yaw = declare_parameter("ekf.r_yaw", 0.02);
+
+  //观测噪声协方差矩阵计算
   auto u_r = [this](const Eigen::VectorXd & z) {
     Eigen::DiagonalMatrix<double, 4> r;
     double x = r_xyz_factor;
     r.diagonal() << abs(x * z[0]), abs(x * z[1]), abs(x * z[2]), r_yaw;
     return r;
   };
+
   // P - error estimate covariance matrix
+  // P是 9x9 的协方差矩阵，对角线上的元素是各个状态量的方差
   Eigen::DiagonalMatrix<double, 9> p0;
   p0.setIdentity();
+  // 初始化卡尔曼滤波对象，用于存储卡尔曼滤波的计算值
   tracker_->ekf = ExtendedKalmanFilter{f, h, j_f, j_h, u_q, u_r, p0};
 
-  // Reset tracker service
+  // 启动追踪服务
   using std::placeholders::_1;
   using std::placeholders::_2;
   using std::placeholders::_3;
@@ -150,7 +166,7 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
       return;
     });
 
-  // Change target service
+  // 改变目标服务 （不太好解释，反正是初始化就对了）
   change_target_srv_ = this->create_service<std_srvs::srv::Trigger>(
     "/tracker/change", [this](
                          const std_srvs::srv::Trigger::Request::SharedPtr,
@@ -162,6 +178,7 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
     });
 
   // Subscriber with tf2 message_filter
+  // 订阅tf2的消息
   // tf2 relevant
   tf2_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
   // Create the timer interface before call to waitForTransform,
@@ -172,15 +189,16 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
   tf2_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf2_buffer_);
   // subscriber and filter
   armors_sub_.subscribe(this, "/detector/armors", rmw_qos_profile_sensor_data);
-  target_frame_ = this->declare_parameter("target_frame", "gimbal_imu");
+  target_frame_ = this->declare_parameter("target_frame", "odom");
   tf2_filter_ = std::make_shared<tf2_filter>(
     armors_sub_, *tf2_buffer_, target_frame_, 10, this->get_node_logging_interface(),
     this->get_node_clock_interface(), std::chrono::duration<int>(1));
   // Register a callback with tf2_ros::MessageFilter to be called when transforms are available
   tf2_filter_->registerCallback(&ArmorTrackerNode::armorsCallback, this);
 
-  // Measurement publisher (for debug usage)
-  info_pub_ = this->create_publisher<auto_aim_interfaces::msg::TrackerInfo>("/tracker/info", 10);
+  // 发布卡尔曼滤波后的跟踪信息，用于调试界面调试
+  info_pub_ = this->create_publisher<auto_aim_interfaces::msg::TrackerInfo>("/trakcer/info", 10);
+  gxu_info_pub_ = this->create_publisher<auto_aim_interfaces::msg::TrackerInfo>("/tracker/gxu_info", 10);
 
   // Publisher
   target_pub_ = this->create_publisher<auto_aim_interfaces::msg::Target>(
@@ -214,11 +232,13 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions & options)
   armor_marker_.color.a = 1.0;
   armor_marker_.color.r = 1.0;
   marker_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/tracker/marker", 10);
+
 }
 
+// 装甲板坐标转换回调函数
 void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::SharedPtr armors_msg)
 {
-  // Tranform armor position from image frame to world coordinate
+  // 把目标装甲板坐标从相机坐标系转换成世界坐标系
   for (auto & armor : armors_msg->armors) {
     geometry_msgs::msg::PoseStamped ps;
     ps.header = armors_msg->header;
@@ -232,7 +252,7 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
     
   }
 
-  // Filter abnormal armors
+  // 过滤掉一些异常的装甲板
   armors_msg->armors.erase(
     std::remove_if(
       armors_msg->armors.begin(), armors_msg->armors.end(),
@@ -245,6 +265,25 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
 
   // Init message
   auto_aim_interfaces::msg::TrackerInfo info_msg;
+  //test
+  auto_aim_interfaces::msg::TrackerInfo gxu_info_msg;
+  geometry_msgs::msg::TransformStamped test_trans = 
+  tf2_buffer_->lookupTransform("yaw_link", 
+                                target_frame_, 
+                                (armors_msg->header).stamp);
+  tf2::Quaternion test_rotate;
+  tf2::fromMsg(test_trans.transform.rotation, test_rotate);
+  tf2::Matrix3x3 m(test_rotate);
+  double tmp_roll,tmp_pitch,tmp_yaw;
+  m.getRPY(tmp_roll,tmp_pitch,gimbal_yaw_);
+  
+  test_trans = tf2_buffer_->lookupTransform("pitch_link", 
+                                            target_frame_, 
+                                            (armors_msg->header).stamp);
+  tf2::fromMsg(test_trans.transform.rotation, test_rotate);
+  m = tf2::Matrix3x3(test_rotate);
+  m.getRPY(tmp_roll,gimbal_pitch_,tmp_yaw);
+  //
   auto_aim_interfaces::msg::Target target_msg;
   rclcpp::Time time = armors_msg->header.stamp;
   target_msg.header.stamp = time;
@@ -268,7 +307,9 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
     info_msg.position.z = tracker_->measurement(2);
     info_msg.yaw = tracker_->measurement(3);
     //test
-    //info_pub_->publish(info_msg);
+    gxu_info_msg.position = info_msg.position; 
+    //
+    info_pub_->publish(info_msg);
 
     if (tracker_->tracker_state == Tracker::DETECTING) {
       target_msg.tracking = false;
@@ -277,8 +318,7 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       tracker_->tracker_state == Tracker::TEMP_LOST) {
       target_msg.tracking = true;
       //test
-      target_msg.is_fire = true;
-      if (tracker_->tracker_state == Tracker::TEMP_LOST) target_msg.is_fire = false;
+      target_msg.is_fire = false;
       
       // Fill target message
       const auto & state = tracker_->target_state;
@@ -291,24 +331,16 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
       target_msg.position.z = state(4);
       target_msg.velocity.z = state(5);
       target_msg.yaw = state(6);
-      target_msg.v_yaw = 3.0;
+      target_msg.v_yaw = state(7);
       target_msg.radius_1 = state(8);
       target_msg.radius_2 = tracker_->another_r;
       target_msg.dz = tracker_->dz;
-
+     
       publishMarkers(target_msg);
-
-      //used for debug test
-      // info_msg.position.x = target_msg.position.x;
-      // info_msg.position.y = target_msg.position.y;
-      // info_msg.position.z = target_msg.position.z;
-      //
       //该函数存在一个隐藏变换用于匹配接口
-      trajectory_->autoSolveTrajectory(target_msg);
-      //test
-      // target_msg.position.x = 1;
-      //target_msg.position.y = 0.4;
-      // target_msg.position.z = 0;
+      trajectory_->autoSolveTrajectory(target_msg, gxu_info_msg, gimbal_yaw_, gimbal_pitch_);
+      //
+      //if (tracker_->tracker_state == Tracker::TEMP_LOST) target_msg.is_fire = false;
       //
     } else if (tracker_->tracker_state == Tracker::CHANGE_TARGET) {
       target_msg.tracking = false;
@@ -317,10 +349,11 @@ void ArmorTrackerNode::armorsCallback(const auto_aim_interfaces::msg::Armors::Sh
 
   last_time_ = time;
   //test
-  info_pub_->publish(info_msg);
+  //info_pub_->publish(info_msg);
+  gxu_info_msg.position_diff = gimbal_yaw_;
+  gxu_info_pub_->publish(gxu_info_msg);
   //
   target_pub_->publish(target_msg);
-
 
 }
 
@@ -330,7 +363,6 @@ void ArmorTrackerNode::publishMarkers(const auto_aim_interfaces::msg::Target & t
   linear_v_marker_.header = target_msg.header;
   angular_v_marker_.header = target_msg.header;
   armor_marker_.header = target_msg.header;
-
   visualization_msgs::msg::MarkerArray marker_array;
   if (target_msg.tracking) {
     double yaw = target_msg.yaw, r1 = target_msg.radius_1, r2 = target_msg.radius_2;

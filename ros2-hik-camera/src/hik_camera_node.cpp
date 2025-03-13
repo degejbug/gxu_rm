@@ -33,7 +33,7 @@ public:
 
     MV_CC_OpenDevice(camera_handle_);
 
-    bool bSetBoolValue=1;
+    bool bSetBoolValue=0;
     nRet = MV_CC_SetBoolValue(camera_handle_, "ReverseX", bSetBoolValue);
     nRet = MV_CC_SetBoolValue(camera_handle_, "ReverseY", bSetBoolValue);
 

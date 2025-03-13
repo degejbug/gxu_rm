@@ -55,6 +55,9 @@ private:
   // 
   double r_xyz_factor, r_yaw;
   double lost_time_thres_;
+  double gimbal_roll_;
+  double gimbal_yaw_;
+  double gimbal_pitch_;
   std::unique_ptr<Tracker> tracker_;
   std::unique_ptr<Trajectory> trajectory_;
 
@@ -73,6 +76,7 @@ private:
 
   // Tracker info publisher
   rclcpp::Publisher<auto_aim_interfaces::msg::TrackerInfo>::SharedPtr info_pub_;
+  rclcpp::Publisher<auto_aim_interfaces::msg::TrackerInfo>::SharedPtr gxu_info_pub_;
 
   // Publisher
   rclcpp::Publisher<auto_aim_interfaces::msg::Target>::SharedPtr target_pub_;

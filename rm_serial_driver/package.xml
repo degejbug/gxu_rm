@@ -28,6 +28,7 @@
   <depend>std_srvs</depend>
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
+  <depend>rm_decision_interfaces</depend>
 
   <depend>message_filters</depend>
 

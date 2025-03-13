@@ -17,6 +17,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 #######################
 
 find_package(ament_cmake_auto REQUIRED)
+find_package(rm_decision_interfaces REQUIRED)
 ament_auto_find_build_dependencies()
 find_package(nav_msgs REQUIRED)
 

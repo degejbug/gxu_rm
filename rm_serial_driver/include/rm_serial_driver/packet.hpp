@@ -15,16 +15,19 @@ struct ReceivePacket
 {
   uint8_t header = 0x5A;
   uint8_t detect_color;  // 0-red 1-blue
-  uint8_t task_mode ;     // 0-auto 1-aim 2-buff
-  bool reset_tracker ;
-  uint8_t is_play ;
-  bool change_target ;
-  uint8_t reserved ;
+  uint8_t task_mode;     // 0-auto 1-aim 2-buff
+  bool reset_tracker;
+  uint8_t is_play;
+  bool change_target;
+  uint8_t reserved;
   float roll;
   float pitch;
   float yaw;
-  float relative_angle; // relative yaw angle of radar and camera
-  uint16_t game_time;  // (s) game time [0, 450]
+  uint8_t game_progress;
+  uint16_t stage_remain_time;
+  uint16_t current_hp;
+  float relative_angle;
+  uint16_t game_time;
   uint32_t timestamp;  // (ms) board time
   uint16_t checksum = 0;
 } __attribute__((packed));
@@ -67,7 +70,7 @@ struct SendPacketNav
   uint16_t checksum = 0;
 } __attribute__((packed));
 
-
+ 
 
 // 定义 fromVector 函数
 inline ReceivePacket fromVector(const std::vector<uint8_t> & data)

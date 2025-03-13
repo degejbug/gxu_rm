@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 ## By adding -Wall and -Werror, the compiler does not ignore warnings anymore,
 ## enforcing cleaner code.
-add_definitions(-Wall -Werror)
+#add_definitions(-Wall) #-Werror)
 
 ## Export compile commands for clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -18,6 +18,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
+
+find_package(Ceres REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(glog REQUIRED)
+
+
 
 ###########
 ## Build ##
@@ -30,6 +36,12 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 rclcpp_components_register_node(${PROJECT_NAME}
   PLUGIN rm_auto_aim::ArmorTrackerNode
   EXECUTABLE ${PROJECT_NAME}_node
+)
+
+target_link_libraries(${PROJECT_NAME}
+  Ceres::ceres
+  Eigen3::Eigen
+  glog::glog
 )
 
 #############
