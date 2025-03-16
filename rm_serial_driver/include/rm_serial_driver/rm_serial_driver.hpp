@@ -53,7 +53,7 @@ private:
   // void sendArmorData(const auto_aim_interfaces::msg::Target::ConstSharedPtr msg);
 
   void sendArmorData(
-    const auto_aim_interfaces::msg::Target::ConstSharedPtr,
+    const auto_aim_interfaces::msg::Target::ConstSharedPtr msg,
     const auto_aim_interfaces::msg::TimeInfo::ConstSharedPtr time_info);
 
   void sendNavData(geometry_msgs::msg::Twist msg);
