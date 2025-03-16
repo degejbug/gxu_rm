@@ -44,6 +44,9 @@ RMSerialDriver::RMSerialDriver(const rclcpp::NodeOptions & options)
   aim_time_info_pub_ =
     this->create_publisher<auto_aim_interfaces::msg::TimeInfo>("/time_info/aim", 10);
 
+  robot_status_pub_= this->create_publisher<rm_decision_interfaces::msg::RobotStatus>("/robot_status", 10);
+  game_status_pub_ = this->create_publisher<rm_decision_interfaces::msg::GameStatus>("/game_status", 10);
+
   record_controller_pub_ = this->create_publisher<std_msgs::msg::String>("/record_controller", 10);
 
   // Detect parameter client
@@ -229,6 +232,16 @@ void RMSerialDriver::receiveData()
           aim_time_info.header = t.header;
           aim_time_info.time = packet.timestamp;
           aim_time_info_pub_->publish(aim_time_info);
+
+          rm_decision_interfaces::msg::RobotStatus robot_status;
+          robot_status.current_hp = packet.current_hp;
+          robot_status_pub_->publish(robot_status);
+
+          rm_decision_interfaces::msg::GameStatus game_status;
+          game_status.game_progress = packet.game_progress;
+          game_status.stage_remain_time = packet.stage_remain_time;
+          game_status_pub_->publish(game_status);
+
 
         } else {
           RCLCPP_ERROR(get_logger(), "CRC error!");

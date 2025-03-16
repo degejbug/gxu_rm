@@ -122,7 +122,7 @@ bool Trajectory::firecontrol(const double gimbal_yaw,
                              const double target_pitch,
                              const double distance){
   // 计算当前角度和目标角度是否在可击打范围内
-  double shooting_range_yaw =  std::abs(atan2(shooting_range_w_ / 2, distance));
+  double shooting_range_yaw =  std::abs(atan2(shooting_range_w_ , distance));
   double shooting_range_pitch =  std::abs(atan2(shooting_range_h_ * 1.5, distance));
   //限制1度以上击打范围防止距离过大以至于无法发射,3m8以外角度会小于1度
   shooting_range_yaw = std::max(shooting_range_yaw, 1.0 * M_PI / 180);

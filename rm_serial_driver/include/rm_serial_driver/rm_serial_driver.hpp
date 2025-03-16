@@ -93,7 +93,7 @@ private:
   double timestamp_offset_ = 0;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
-  //rclcpp::Subscription<auto_aim_interfaces::msg::Target>::SharedPtr aim_sub_;
+  // rclcpp::Subscription<auto_aim_interfaces::msg::Target>::SharedPtr aim_sub_;
 
   message_filters::Subscriber<auto_aim_interfaces::msg::Target> aim_sub_;
   message_filters::Subscriber<auto_aim_interfaces::msg::TimeInfo> aim_time_info_sub_;
